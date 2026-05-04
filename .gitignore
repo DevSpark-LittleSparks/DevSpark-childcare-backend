@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+### Local config (DO NOT COMMIT) ###
+src/main/resources/application-local.properties
