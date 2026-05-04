@@ -6,8 +6,9 @@ import lombok.Data;
 public class TeacherSignupRequestDto {
     private String fullName;
     private String email;
+    private String password;
     private String phone;
     private String address;
-    private String designation; // SENIOR or JUNIOR
-    private String password;
+    private String designation;
+    private String experience;
 }

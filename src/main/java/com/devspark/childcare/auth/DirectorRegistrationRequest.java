@@ -1,4 +1,4 @@
-package com.devspark.childcare.staff;
+package com.devspark.childcare.auth;
 
 import com.devspark.childcare.shared.audit.AuditableEntity;
 import jakarta.persistence.*;
@@ -8,14 +8,14 @@ import org.hibernate.annotations.SQLRestriction;
 import java.util.UUID;
 
 @Entity
-@Table(name = "teacher_registration_request")
+@Table(name = "director_registration_request")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @SQLRestriction("deleted = false")
-public class TeacherRegistrationRequest extends AuditableEntity {
+public class DirectorRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -34,12 +34,14 @@ public class TeacherRegistrationRequest extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Designation designation;
+    @Column(name = "center_name", length = 150)
+    private String centerName;
 
-    @Column(name = "experience", length = 100)
-    private String experience;
+    @Column(name = "center_address", columnDefinition = "TEXT")
+    private String centerAddress;
+
+    @Column(name = "capacity")
+    private Integer capacity;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
@@ -48,11 +50,6 @@ public class TeacherRegistrationRequest extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
-
-
-    public enum Designation {
-        SENIOR, JUNIOR
-    }
 
     public enum RequestStatus {
         PENDING, APPROVED, REJECTED
