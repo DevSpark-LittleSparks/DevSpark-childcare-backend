@@ -45,12 +45,20 @@ public class GlobalExceptionHandler {
         return response;
     }
 
-    // 4. When an unexpected system error occurs - 500 Internal Server Error
+    // 4. When a runtime business logic error occurs (e.g., signup validation failure) - 400 Bad Request
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleRuntime(RuntimeException ex) {
+        return ApiResponse.error(ex.getMessage());
+    }
+
+    // 5. When an unexpected system error occurs - 500 Internal Server Error
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleGeneral(Exception ex) {
         // Log the actual error in the server console for debugging
         log.error("Unexpected error occurred", ex);
-        return ApiResponse.error("An unexpected error occurred. Please try again later.");
+        return ApiResponse.error("An unexpected system error occurred. Please try again later.");
     }
+
 }

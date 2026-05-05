@@ -1,5 +1,7 @@
 package com.devspark.childcare.auth;
 
+import com.devspark.childcare.child.Child;
+import com.devspark.childcare.child.ChildRepository;
 import com.devspark.childcare.staff.Teacher;
 import com.devspark.childcare.staff.TeacherRegistrationRequest;
 import com.devspark.childcare.staff.TeacherRepository;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -30,13 +33,21 @@ public class SignupService {
     private final OtpTokenRepository otpTokenRepository;
     private final TeacherRepository teacherRepository;
     private final ParentRepository parentRepository;
+    private final ChildRepository childRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+
+    // ─── Submit Requests ──────────────────────────────────────────────────
 
     @Transactional
     public void submitTeacherRequest(TeacherRegistrationRequest request, String plainPassword) {
         if (accountRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
+        }
+        if (teacherRequestRepository.findByEmail(request.getEmail())
+                .filter(r -> r.getStatus() == TeacherRegistrationRequest.RequestStatus.PENDING)
+                .isPresent()) {
+            throw new RuntimeException("A pending request already exists for this email");
         }
 
         try {
@@ -51,7 +62,6 @@ public class SignupService {
 
             UserRecord userRecord = FirebaseAuth.getInstance().createUser(firebaseRequest);
             String firebaseUid = userRecord.getUid();
-
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
             request.setPasswordHash(passwordEncoder.encode(plainPassword));
@@ -67,16 +77,29 @@ public class SignupService {
                     .build();
             accountRepository.save(account);
 
+            // Notify admin
+            emailService.notifyAdminNewRequest(request.getFullName(), request.getEmail(), "teacher");
+
         } catch (Exception e) {
-            log.error("Error creating Firebase user: ", e);
+            log.error("Error creating Firebase user for teacher: ", e);
             throw new RuntimeException("Failed to initiate signup: " + e.getMessage());
         }
     }
 
     @Transactional
     public void submitParentRequest(ParentRegistrationRequest request, String plainPassword) {
+        // ── P0: Email must be pre-registered by admin during child admissions ──
+        if (!childRepository.existsByGuardianEmail(request.getEmail())) {
+            throw new RuntimeException("This email is not recognized as a registered guardian's email. Please ensure your child's enrollment is completed by the school before signing up.");
+        }
+
         if (accountRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new RuntimeException("An account already exists for this email");
+        }
+        if (parentRequestRepository.findByEmail(request.getEmail())
+                .filter(r -> r.getStatus() == ParentRegistrationRequest.RequestStatus.PENDING)
+                .isPresent()) {
+            throw new RuntimeException("A pending request already exists for this email");
         }
 
         try {
@@ -91,7 +114,6 @@ public class SignupService {
 
             UserRecord userRecord = FirebaseAuth.getInstance().createUser(firebaseRequest);
             String firebaseUid = userRecord.getUid();
-
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
             request.setPasswordHash(passwordEncoder.encode(plainPassword));
@@ -107,8 +129,12 @@ public class SignupService {
                     .build();
             accountRepository.save(account);
 
+            // Notify admin
+            String fullName = request.getFirstName() + " " + request.getLastName();
+            emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+
         } catch (Exception e) {
-            log.error("Error creating Firebase user: ", e);
+            log.error("Error creating Firebase user for parent: ", e);
             throw new RuntimeException("Failed to initiate signup: " + e.getMessage());
         }
     }
@@ -131,7 +157,6 @@ public class SignupService {
 
             UserRecord userRecord = FirebaseAuth.getInstance().createUser(firebaseRequest);
             String firebaseUid = userRecord.getUid();
-
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
             request.setPasswordHash(passwordEncoder.encode(plainPassword));
@@ -147,11 +172,16 @@ public class SignupService {
                     .build();
             accountRepository.save(account);
 
+            // Notify admin
+            emailService.notifyAdminNewRequest(request.getFullName(), request.getEmail(), "director");
+
         } catch (Exception e) {
-            log.error("Error creating Firebase user: ", e);
+            log.error("Error creating Firebase user for director: ", e);
             throw new RuntimeException("Failed to initiate signup: " + e.getMessage());
         }
     }
+
+    // ─── Approve Requests ─────────────────────────────────────────────────
 
     @Transactional
     public void approveTeacherRequest(String requestId) {
@@ -165,14 +195,13 @@ public class SignupService {
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
         String otp = generateOtp();
-        OtpToken otpToken = OtpToken.builder()
+        otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
                 .expiresAt(LocalDateTime.now().plusHours(1))
-                .build();
-        otpTokenRepository.save(otpToken);
+                .build());
 
-        emailService.sendOtpEmail(request.getEmail(), otp);
+        emailService.sendOtpEmail(request.getEmail(), request.getFullName(), otp);
     }
 
     @Transactional
@@ -187,14 +216,14 @@ public class SignupService {
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
         String otp = generateOtp();
-        OtpToken otpToken = OtpToken.builder()
+        otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
                 .expiresAt(LocalDateTime.now().plusHours(1))
-                .build();
-        otpTokenRepository.save(otpToken);
+                .build());
 
-        emailService.sendOtpEmail(request.getEmail(), otp);
+        String fullName = request.getFirstName() + " " + request.getLastName();
+        emailService.sendOtpEmail(request.getEmail(), fullName, otp);
     }
 
     @Transactional
@@ -209,15 +238,16 @@ public class SignupService {
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
         String otp = generateOtp();
-        OtpToken otpToken = OtpToken.builder()
+        otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
                 .expiresAt(LocalDateTime.now().plusHours(1))
-                .build();
-        otpTokenRepository.save(otpToken);
+                .build());
 
-        emailService.sendOtpEmail(request.getEmail(), otp);
+        emailService.sendOtpEmail(request.getEmail(), request.getFullName(), otp);
     }
+
+    // ─── OTP Verification & Account Activation ────────────────────────────
 
     @Transactional
     public void verifyOtpAndCompleteSignup(String email, String otpCode) {
@@ -236,29 +266,32 @@ public class SignupService {
         account.setStatus(Account.Status.ACTIVE);
         accountRepository.save(account);
 
+        // Enable Firebase user
         try {
-            UserRecord.UpdateRequest firebaseUpdate = new UserRecord.UpdateRequest(account.getFirebaseUid())
-                    .setDisabled(false);
-            FirebaseAuth.getInstance().updateUser(firebaseUpdate);
+            FirebaseAuth.getInstance().updateUser(
+                new UserRecord.UpdateRequest(account.getFirebaseUid()).setDisabled(false)
+            );
         } catch (Exception e) {
             log.error("Error enabling Firebase user: ", e);
             throw new RuntimeException("Failed to enable user in Firebase");
         }
 
+        // Create role-specific profile
         if (account.getRole() == Account.Role.TEACHER) {
             TeacherRegistrationRequest request = teacherRequestRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Request not found"));
-            
+                    .orElseThrow(() -> new RuntimeException("Teacher request not found"));
+
             Teacher teacher = Teacher.builder()
                     .account(account)
                     .fullName(request.getFullName())
-                    .designation(Teacher.Designation.valueOf(request.getDesignation().name()))
-                    .maxDailyActivities(request.getDesignation() == TeacherRegistrationRequest.Designation.SENIOR ? 5 : 2)
+                    .designation(Teacher.Designation.JUNIOR) // Default; no designation field
+                    .maxDailyActivities(2)
                     .build();
             teacherRepository.save(teacher);
+
         } else if (account.getRole() == Account.Role.PARENT) {
             ParentRegistrationRequest request = parentRequestRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Request not found"));
+                    .orElseThrow(() -> new RuntimeException("Parent request not found"));
 
             Parent parent = Parent.builder()
                     .account(account)
@@ -268,14 +301,168 @@ public class SignupService {
                     .nic(request.getNic())
                     .relationship(Parent.Relationship.valueOf(request.getRelationship().name()))
                     .build();
-            parentRepository.save(parent);
+            Parent savedParent = parentRepository.save(parent);
+
+            // Link all pre-registered children to this parent
+            List<Child> children = childRepository.findByGuardianEmail(email);
+            for (Child child : children) {
+                child.setParentId(savedParent.getParentId());
+                childRepository.save(child);
+            }
+            log.info("Linked {} child(ren) to parent: {}", children.size(), email);
+
         } else if (account.getRole() == Account.Role.ADMIN) {
-            // No specific profile entity for Admin yet, but the account is now active
             log.info("Admin account fully activated for: {}", email);
         }
     }
 
+    // ─── Reject Requests ─────────────────────────────────────────────────
+
+    @Transactional
+    public void rejectTeacherRequest(String requestId, String reason) {
+        TeacherRegistrationRequest request = teacherRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        request.setStatus(TeacherRegistrationRequest.RequestStatus.REJECTED);
+        teacherRequestRepository.save(request);
+
+        // Delete the disabled Firebase user that was created on submit
+        deleteFirebaseUser(request.getEmail());
+
+        // Delete the inactive account
+        accountRepository.findByEmail(request.getEmail())
+                .ifPresent(accountRepository::delete);
+
+        emailService.sendRejectionEmail(request.getEmail(), request.getFullName(), "Teacher", reason);
+    }
+
+    @Transactional
+    public void rejectParentRequest(String requestId, String reason) {
+        ParentRegistrationRequest request = parentRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        request.setStatus(ParentRegistrationRequest.RequestStatus.REJECTED);
+        parentRequestRepository.save(request);
+
+        deleteFirebaseUser(request.getEmail());
+
+        accountRepository.findByEmail(request.getEmail())
+                .ifPresent(accountRepository::delete);
+
+        String fullName = request.getFirstName() + " " + request.getLastName();
+        emailService.sendRejectionEmail(request.getEmail(), fullName, "Parent", reason);
+    }
+
+    @Transactional
+    public void rejectDirectorRequest(String requestId, String reason) {
+        DirectorRegistrationRequest request = directorRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        request.setStatus(DirectorRegistrationRequest.RequestStatus.REJECTED);
+        directorRequestRepository.save(request);
+
+        deleteFirebaseUser(request.getEmail());
+
+        accountRepository.findByEmail(request.getEmail())
+                .ifPresent(accountRepository::delete);
+
+        emailService.sendRejectionEmail(request.getEmail(), request.getFullName(), "Director", reason);
+    }
+
+    // ─── Pending Request Lists ────────────────────────────────────────────
+
+    public List<com.devspark.childcare.auth.dto.PendingRequestDto> getPendingTeacherRequests() {
+        return teacherRequestRepository
+                .findByStatus(TeacherRegistrationRequest.RequestStatus.PENDING)
+                .stream()
+                .map(r -> com.devspark.childcare.auth.dto.PendingRequestDto.builder()
+                        .requestId(r.getRequestId())
+                        .fullName(r.getFullName())
+                        .email(r.getEmail())
+                        .phone(r.getPhone())
+                        .role("TEACHER")
+                        .status(r.getStatus().name())
+                        .submittedAt(r.getCreatedAt())
+                        .extraInfo("Experience: " + r.getExperience())
+                        .build())
+                .toList();
+    }
+
+    public List<com.devspark.childcare.auth.dto.PendingRequestDto> getPendingParentRequests() {
+        return parentRequestRepository
+                .findByStatus(ParentRegistrationRequest.RequestStatus.PENDING)
+                .stream()
+                .map(r -> com.devspark.childcare.auth.dto.PendingRequestDto.builder()
+                        .requestId(r.getRequestId())
+                        .fullName(r.getFirstName() + " " + r.getLastName())
+                        .email(r.getEmail())
+                        .phone(r.getPhone())
+                        .role("PARENT")
+                        .status(r.getStatus().name())
+                        .submittedAt(r.getCreatedAt())
+                        .extraInfo("Child: " + r.getChildFirstName()
+                                + " | Relationship: " + r.getRelationship().name())
+                        .build())
+                .toList();
+    }
+
+    public List<com.devspark.childcare.auth.dto.PendingRequestDto> getPendingDirectorRequests() {
+        return directorRequestRepository
+                .findByStatus(DirectorRegistrationRequest.RequestStatus.PENDING)
+                .stream()
+                .map(r -> com.devspark.childcare.auth.dto.PendingRequestDto.builder()
+                        .requestId(r.getRequestId())
+                        .fullName(r.getFullName())
+                        .email(r.getEmail())
+                        .phone(r.getPhone())
+                        .role("DIRECTOR")
+                        .status(r.getStatus().name())
+                        .submittedAt(r.getCreatedAt())
+                        .extraInfo("Center: " + r.getCenterName()
+                                + " | Capacity: " + r.getCapacity())
+                        .build())
+                .toList();
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────
+
     private String generateOtp() {
         return String.format("%06d", new Random().nextInt(999999));
     }
+
+    private void deleteFirebaseUser(String email) {
+        try {
+            com.google.firebase.auth.UserRecord user =
+                    FirebaseAuth.getInstance().getUserByEmail(email);
+            FirebaseAuth.getInstance().deleteUser(user.getUid());
+            log.info("Deleted Firebase user for rejected request: {}", email);
+        } catch (Exception e) {
+            log.warn("Could not delete Firebase user for {}: {}", email, e.getMessage());
+        }
+    }
+    // ─── Forgot Password ──────────────────────────────────────────────────
+
+    public void processForgotPassword(String email) {
+        try {
+            // 1. Verify user exists in our system
+            if (!accountRepository.existsByEmail(email)) {
+                // To prevent email enumeration, we don't throw error but just return or log
+                log.warn("Password reset requested for non-existent email: {}", email);
+                return; 
+            }
+
+            // 2. Generate Firebase password reset link
+            String resetLink = FirebaseAuth.getInstance().generatePasswordResetLink(email);
+
+            // 3. Send Styled HTML Email
+            emailService.sendPasswordResetEmail(email, resetLink);
+
+        } catch (Exception e) {
+            log.error("Failed to process password reset for {}: {}", email, e.getMessage());
+            throw new RuntimeException("Could not process password reset request");
+        }
+    }
 }
+
+
+

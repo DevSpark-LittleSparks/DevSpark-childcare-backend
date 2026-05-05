@@ -1,18 +1,11 @@
 package com.devspark.childcare.child;
 
-import com.devspark.childcare.auth.Account; // Wait, parent is linked to Account or Parent?
-import com.devspark.childcare.auth.Account;
-import com.devspark.childcare.auth.Account; // Let's check child SQL
-// CONSTRAINT fk_child_parent FOREIGN KEY (parent_id) REFERENCES parent (parent_id)
-
-import com.devspark.childcare.auth.Account; // I need to move Parent entity too if it's in auth
 import com.devspark.childcare.shared.audit.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "child")
@@ -29,11 +22,19 @@ public class Child extends AuditableEntity {
     @Column(name = "child_id", columnDefinition = "CHAR(36)")
     private String childId;
 
-    // We'll need the Parent entity here. I'll move it to auth or guardian.
-    // Let's assume it's in com.devspark.childcare.auth for now.
-    
+    /**
+     * Linked after parent completes signup and OTP verification.
+     * Null until parent account is activated.
+     */
     @Column(name = "parent_id", columnDefinition = "CHAR(36)")
-    private String parentId; // For now using ID to avoid circular dependency or missing class during move
+    private String parentId;
+
+    /**
+     * Pre-registered by admin during admissions.
+     * Used to validate parent signup requests — only this email can sign up for this child.
+     */
+    @Column(name = "guardian_email", nullable = false, length = 150)
+    private String guardianEmail;
 
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
@@ -62,7 +63,6 @@ public class Child extends AuditableEntity {
 
     @Column(name = "profile_pic", length = 500)
     private String profilePic;
-
 
     public enum Gender {
         MALE, FEMALE, OTHER
