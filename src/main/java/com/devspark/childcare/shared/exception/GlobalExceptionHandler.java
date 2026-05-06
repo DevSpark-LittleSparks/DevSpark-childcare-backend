@@ -34,12 +34,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        
-        // Extract all field errors from the exception and put them into a Map
         ex.getBindingResult().getFieldErrors()
-            .forEach(e -> errors.put(e.getField(), e.getDefaultMessage()));
+            .forEach(e -> {
+                errors.put(e.getField(), e.getDefaultMessage());
+                log.error("Validation error: field '{}', message '{}'", e.getField(), e.getDefaultMessage());
+            });
         
-        // Include the validation errors inside the 'data' field and send them to the Frontend
         ApiResponse<Map<String, String>> response = ApiResponse.error("Validation failed");
         response.setData(errors);
         return response;
@@ -49,6 +49,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleRuntime(RuntimeException ex) {
+        log.error("Runtime exception occurred: {}", ex.getMessage(), ex);
         return ApiResponse.error(ex.getMessage());
     }
 

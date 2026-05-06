@@ -8,7 +8,7 @@ import java.util.List;
 
 @Repository
 public interface ParentRepository extends JpaRepository<Parent, String> {
-    @Query("SELECT p.email FROM Parent p")
+    @Query("SELECT p.account.email FROM Parent p")
     List<String> findAllEmails();
 }
 

@@ -36,6 +36,9 @@ public class Child extends AuditableEntity {
     @Column(name = "guardian_email", nullable = false, length = 150)
     private String guardianEmail;
 
+    @Column(name = "guardian_name", length = 150)
+    private String guardianName;
+
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 

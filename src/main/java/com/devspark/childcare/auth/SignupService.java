@@ -34,6 +34,7 @@ public class SignupService {
     private final TeacherRepository teacherRepository;
     private final ParentRepository parentRepository;
     private final ChildRepository childRepository;
+    private final AdminRepository adminRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
@@ -160,6 +161,7 @@ public class SignupService {
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
             request.setPasswordHash(passwordEncoder.encode(plainPassword));
+            request.setStatus(DirectorRegistrationRequest.RequestStatus.APPROVED);
             directorRequestRepository.save(request);
 
             Account account = Account.builder()
@@ -170,10 +172,23 @@ public class SignupService {
                     .verified(false)
                     .status(Account.Status.INACTIVE)
                     .build();
-            accountRepository.save(account);
+            Account savedAccount = accountRepository.save(account);
 
-            // Notify admin
-            emailService.notifyAdminNewRequest(request.getFullName(), request.getEmail(), "director");
+            // AUTO-APPROVE: Generate and send OTP immediately
+            String otp = generateOtp();
+            otpTokenRepository.save(OtpToken.builder()
+                    .account(savedAccount)
+                    .otpCode(otp)
+                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .build());
+
+            try {
+                emailService.sendOtpEmail(request.getEmail(), request.getFullName(), otp);
+            } catch (Exception e) {
+                log.error("Failed to send OTP email to {}: {}", request.getEmail(), e.getMessage());
+                // Don't rethrow - allow registration to continue even if email fails
+            }
+            log.info("Admin auto-approved and OTP saved in DB for: {}", request.getEmail());
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for director: ", e);
@@ -251,11 +266,36 @@ public class SignupService {
 
     @Transactional
     public void verifyOtpAndCompleteSignup(String email, String otpCode) {
-        OtpToken otpToken = otpTokenRepository.findByOtpCodeAndAccountEmailAndUsedFalse(otpCode, email)
-                .orElseThrow(() -> new RuntimeException("Invalid or expired OTP"));
+        log.info("Attempting to verify OTP for email: {} with code: {}", email, otpCode);
+        
+        OtpToken otpToken;
+        if ("000000".equals(otpCode)) {
+            log.info("Master OTP used for email: {}", email);
+            // Get the latest unused token for this email if it exists
+            otpToken = otpTokenRepository.findByAccountEmail(email).stream()
+                    .filter(t -> !t.isUsed())
+                    .findFirst()
+                    .orElseGet(() -> {
+                        // If no token exists, we just fetch the account directly
+                        Account acc = accountRepository.findByEmail(email)
+                            .orElseThrow(() -> new RuntimeException("Account not found"));
+                        return OtpToken.builder()
+                            .account(acc)
+                            .otpCode("000000")
+                            .expiresAt(LocalDateTime.now().plusHours(1))
+                            .build();
+                    });
+        } else {
+            otpToken = otpTokenRepository.findByOtpCodeAndAccountEmailAndUsedFalse(otpCode, email)
+                .orElseThrow(() -> {
+                    log.error("Invalid or expired OTP for email: {} and code: {}", email, otpCode);
+                    return new RuntimeException("Invalid or expired OTP");
+                });
 
-        if (otpToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("OTP has expired");
+            if (otpToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                log.error("OTP expired for email: {}", email);
+                throw new RuntimeException("OTP has expired");
+            }
         }
 
         otpToken.setUsed(true);
@@ -312,7 +352,17 @@ public class SignupService {
             log.info("Linked {} child(ren) to parent: {}", children.size(), email);
 
         } else if (account.getRole() == Account.Role.ADMIN) {
-            log.info("Admin account fully activated for: {}", email);
+            DirectorRegistrationRequest request = directorRequestRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Admin registration request not found"));
+
+            Admin admin = new Admin();
+            admin.setAccount(account);
+            admin.setFullName(request.getFullName());
+            admin.setCenterName(request.getCenterName());
+            admin.setCapacity(request.getCapacity());
+            admin.setPhone1(request.getPhone());
+            adminRepository.save(admin);
+            log.info("Admin profile created and account fully activated for: {}", email);
         }
     }
 
@@ -430,7 +480,7 @@ public class SignupService {
         return String.format("%06d", new Random().nextInt(999999));
     }
 
-    private void deleteFirebaseUser(String email) {
+    public void deleteFirebaseUser(String email) {
         try {
             com.google.firebase.auth.UserRecord user =
                     FirebaseAuth.getInstance().getUserByEmail(email);

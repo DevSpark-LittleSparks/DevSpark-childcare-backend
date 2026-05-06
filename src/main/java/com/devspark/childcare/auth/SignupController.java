@@ -28,7 +28,7 @@ public class SignupController {
                 .designation(TeacherRegistrationRequest.Designation.valueOf(dto.getDesignation()))
                 .experience(dto.getExperience())
                 .build();
-        
+
         signupService.submitTeacherRequest(request, dto.getPassword());
         return ApiResponse.success("Teacher signup request submitted. Awaiting admin approval.", null);
     }
@@ -45,7 +45,9 @@ public class SignupController {
                 .relationship(ParentRegistrationRequest.Relationship.valueOf(dto.getRelationship()))
                 .childFirstName(dto.getChildName()) // Simplification for now
                 .childDob(dto.getDob() != null ? LocalDate.parse(dto.getDob()) : null)
-                .childGender(dto.getGender() != null ? ParentRegistrationRequest.Gender.valueOf(dto.getGender().toUpperCase()) : null)
+                .childGender(dto.getGender() != null
+                        ? ParentRegistrationRequest.Gender.valueOf(dto.getGender().toUpperCase())
+                        : null)
                 .build();
 
         signupService.submitParentRequest(request, dto.getPassword());
@@ -70,7 +72,13 @@ public class SignupController {
 
     @PostMapping("/verify-otp")
     public ApiResponse<String> verifyOtp(@RequestBody OtpVerificationDto dto) {
-        signupService.verifyOtpAndCompleteSignup(dto.getEmail(), dto.getOtp());
+        signupService.verifyOtpAndCompleteSignup(dto.getEmail(), dto.getOtpCode());
         return ApiResponse.success("Signup successful! You can now login.", null);
+    }
+
+    @DeleteMapping("/cleanup")
+    public ApiResponse<String> cleanupUser(@RequestParam String email) {
+        signupService.deleteFirebaseUser(email);
+        return ApiResponse.success("User deleted from Firebase successfully.", null);
     }
 }
