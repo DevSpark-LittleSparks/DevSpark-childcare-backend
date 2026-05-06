@@ -1,0 +1,14 @@
+package com.devspark.childcare.auth.dto;
+
+import lombok.Data;
+
+@Data
+public class TeacherSignupRequestDto {
+    private String fullName;
+    private String email;
+    private String password;
+    private String phone;
+    private String address;
+    private String designation;
+    private String experience;
+}
