@@ -94,7 +94,8 @@ public class SignupService {
             throw new RuntimeException("This email is not recognized as a registered guardian's email. Please ensure your child's enrollment is completed by the school before signing up.");
         }
 
-        if (accountRepository.existsByEmail(request.getEmail())) {
+        Account existingAccount = accountRepository.findByEmail(request.getEmail()).orElse(null);
+        if (existingAccount != null && existingAccount.getFirebaseUid() != null) {
             throw new RuntimeException("An account already exists for this email");
         }
         if (parentRequestRepository.findByEmail(request.getEmail())
@@ -120,15 +121,22 @@ public class SignupService {
             request.setPasswordHash(passwordEncoder.encode(plainPassword));
             parentRequestRepository.save(request);
 
-            Account account = Account.builder()
-                    .email(request.getEmail())
-                    .passwordHash(request.getPasswordHash())
-                    .firebaseUid(firebaseUid)
-                    .role(Account.Role.PARENT)
-                    .verified(false)
-                    .status(Account.Status.INACTIVE)
-                    .build();
-            accountRepository.save(account);
+            if (existingAccount != null) {
+                existingAccount.setPasswordHash(request.getPasswordHash());
+                existingAccount.setFirebaseUid(firebaseUid);
+                // Status remains INACTIVE until OTP verification
+                accountRepository.save(existingAccount);
+            } else {
+                Account account = Account.builder()
+                        .email(request.getEmail())
+                        .passwordHash(request.getPasswordHash())
+                        .firebaseUid(firebaseUid)
+                        .role(Account.Role.PARENT)
+                        .verified(false)
+                        .status(Account.Status.INACTIVE)
+                        .build();
+                accountRepository.save(account);
+            }
 
             // Notify admin
             String fullName = request.getFirstName() + " " + request.getLastName();
@@ -333,15 +341,26 @@ public class SignupService {
             ParentRegistrationRequest request = parentRequestRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Parent request not found"));
 
-            Parent parent = Parent.builder()
-                    .account(account)
-                    .fullName(request.getFirstName() + " " + request.getLastName())
-                    .address(request.getAddress())
-                    .phone(request.getPhone())
-                    .nic(request.getNic())
-                    .relationship(Parent.Relationship.valueOf(request.getRelationship().name()))
-                    .build();
-            Parent savedParent = parentRepository.save(parent);
+            Parent parent = parentRepository.findByAccountAccountId(account.getAccountId()).orElse(null);
+            Parent savedParent;
+            if (parent != null) {
+                parent.setFullName(request.getFirstName() + " " + request.getLastName());
+                parent.setAddress(request.getAddress());
+                parent.setPhone(request.getPhone());
+                parent.setNic(request.getNic());
+                parent.setRelationship(Parent.Relationship.valueOf(request.getRelationship().name()));
+                savedParent = parentRepository.save(parent);
+            } else {
+                parent = Parent.builder()
+                        .account(account)
+                        .fullName(request.getFirstName() + " " + request.getLastName())
+                        .address(request.getAddress())
+                        .phone(request.getPhone())
+                        .nic(request.getNic())
+                        .relationship(Parent.Relationship.valueOf(request.getRelationship().name()))
+                        .build();
+                savedParent = parentRepository.save(parent);
+            }
 
             // Link all pre-registered children to this parent
             List<Child> children = childRepository.findByGuardianEmail(email);
