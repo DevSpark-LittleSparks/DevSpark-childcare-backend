@@ -5,10 +5,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ParentRepository extends JpaRepository<Parent, String> {
     @Query("SELECT p.account.email FROM Parent p")
     List<String> findAllEmails();
+
+    Optional<Parent> findByAccountAccountId(String accountId);
+
+    Optional<Parent> findByAccountEmail(String email);
 }
 

@@ -22,7 +22,7 @@ public class Parent extends AuditableEntity {
     @Column(name = "parent_id", columnDefinition = "CHAR(36)")
     private String parentId;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "account_id", nullable = false, columnDefinition = "CHAR(36)")
     private Account account;
 
@@ -38,11 +38,14 @@ public class Parent extends AuditableEntity {
     @Column(length = 20)
     private String nic;
 
+    @Column(name = "phone2", length = 20)
+    private String phone2;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Relationship relationship;
 
-    @Column(name = "profile_picture", length = 500)
+    @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
 
 

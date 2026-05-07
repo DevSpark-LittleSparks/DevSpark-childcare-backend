@@ -40,7 +40,7 @@ public class Admin {
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "profile_image_url")
+    @Column(name = "profile_image_url", columnDefinition = "LONGTEXT")
     private String profileImageUrl;
 
     @PrePersist
