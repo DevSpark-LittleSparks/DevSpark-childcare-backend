@@ -19,8 +19,8 @@ public class Account extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "account_id", columnDefinition = "CHAR(36)")
-    private String accountId;
+    @Column(name = "account_id", updatable = false, nullable = false)
+    private UUID accountId; // Changed from String to UUID
 
     @Column(name = "firebase_uid", unique = true, length = 128)
     private String firebaseUid;
@@ -44,12 +44,8 @@ public class Account extends AuditableEntity {
     @Column(nullable = false)
     private Status status = Status.ACTIVE;
 
-    @PrePersist
-    public void prePersist() {
-        if (accountId == null) {
-            accountId = UUID.randomUUID().toString();
-        }
-    }
+    // Removed prePersist because @GeneratedValue(strategy = GenerationType.UUID)
+    // allows Hibernate to automatically generate a new UUID and send it to the Database as BINARY.
 
     public enum Role {
         ADMIN, TEACHER, PARENT

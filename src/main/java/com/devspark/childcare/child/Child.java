@@ -1,11 +1,5 @@
 package com.devspark.childcare.child;
 
-import com.devspark.childcare.auth.Account; // Wait, parent is linked to Account or Parent?
-import com.devspark.childcare.auth.Account;
-import com.devspark.childcare.auth.Account; // Let's check child SQL
-// CONSTRAINT fk_child_parent FOREIGN KEY (parent_id) REFERENCES parent (parent_id)
-
-import com.devspark.childcare.auth.Account; // I need to move Parent entity too if it's in auth
 import com.devspark.childcare.shared.audit.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,14 +20,11 @@ public class Child extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "child_id", columnDefinition = "CHAR(36)")
-    private String childId;
+    @Column(name = "child_id", updatable = false, nullable = false)
+    private UUID childId; // Changed from String to UUID, removed CHAR(36)
 
-    // We'll need the Parent entity here. I'll move it to auth or guardian.
-    // Let's assume it's in com.devspark.childcare.auth for now.
-    
-    @Column(name = "parent_id", columnDefinition = "CHAR(36)")
-    private String parentId; // For now using ID to avoid circular dependency or missing class during move
+    @Column(name = "parent_id")
+    private UUID parentId; // This should also be UUID instead of String
 
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
@@ -62,7 +53,6 @@ public class Child extends AuditableEntity {
 
     @Column(name = "profile_pic", length = 500)
     private String profilePic;
-
 
     public enum Gender {
         MALE, FEMALE, OTHER
