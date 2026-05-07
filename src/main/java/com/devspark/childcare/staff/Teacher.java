@@ -30,12 +30,21 @@ public class Teacher extends AuditableEntity {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    @Column(name = "profile_picture", length = 500)
+    @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Designation designation;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
 
     @Column(name = "max_daily_activities", nullable = false)
     private int maxDailyActivities;

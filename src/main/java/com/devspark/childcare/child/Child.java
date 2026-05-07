@@ -64,10 +64,21 @@ public class Child extends AuditableEntity {
     @Column(name = "special_note", columnDefinition = "TEXT")
     private String specialNote;
 
-    @Column(name = "profile_pic", length = 500)
+    @Column(length = 255)
+    private String address;
+
+    @Column(name = "profile_pic", columnDefinition = "LONGTEXT")
     private String profilePic;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status;
 
     public enum Gender {
         MALE, FEMALE, OTHER
+    }
+
+    public enum Status {
+        ENROLLED, GRADUATING, GRADUATED
     }
 }

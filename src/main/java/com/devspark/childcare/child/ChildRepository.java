@@ -16,4 +16,6 @@ public interface ChildRepository extends JpaRepository<Child, String> {
 
     /** Link parent profile to child after OTP activation */
     List<Child> findByParentId(String parentId);
+
+    boolean existsByFirstNameAndLastNameAndDobAndParentId(String firstName, String lastName, java.time.LocalDate dob, String parentId);
 }

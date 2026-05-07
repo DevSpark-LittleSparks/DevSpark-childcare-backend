@@ -19,4 +19,6 @@ public class ChildRegistrationDto {
     private String parentEmail;
     private String parentContact;
     private String parentID;
+    private String relationship;
+    private String profilePic;
 }
