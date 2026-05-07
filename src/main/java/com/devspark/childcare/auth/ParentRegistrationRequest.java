@@ -20,8 +20,8 @@ public class ParentRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "request_id", columnDefinition = "CHAR(36)")
-    private String requestId;
+    @Column(name = "request_id", updatable = false, nullable = false)
+    private UUID requestId; // Changed String to UUID, removed the CHAR(36) part
 
     // Parent info
     @Column(name = "first_name", nullable = false, length = 100)
@@ -79,7 +79,6 @@ public class ParentRegistrationRequest extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
-
 
     public enum Relationship {
         MOTHER, FATHER, GUARDIAN

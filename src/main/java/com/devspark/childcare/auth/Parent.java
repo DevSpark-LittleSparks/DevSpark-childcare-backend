@@ -19,11 +19,11 @@ public class Parent extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "parent_id", columnDefinition = "CHAR(36)")
-    private String parentId;
+    @Column(name = "parent_id", updatable = false, nullable = false)
+    private UUID parentId; // Changed from String to UUID, removed CHAR(36)
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false, columnDefinition = "CHAR(36)")
+    @JoinColumn(name = "account_id", nullable = false) // Removed the columnDefinition = "CHAR(36)" part
     private Account account;
 
     @Column(name = "full_name", nullable = false, length = 150)
@@ -44,7 +44,6 @@ public class Parent extends AuditableEntity {
 
     @Column(name = "profile_picture", length = 500)
     private String profilePicture;
-
 
     public enum Relationship {
         MOTHER, FATHER, GUARDIAN
