@@ -20,8 +20,10 @@ public class ParentRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "request_id", updatable = false, nullable = false)
-    private UUID requestId; // Changed String to UUID, removed the CHAR(36) part
+    // ✅ FIX: Use UUID type matching MySQL configuration
+    @org.hibernate.annotations.JdbcTypeCode(java.sql.Types.VARCHAR)
+    @Column(name = "request_id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
+    private UUID requestId;
 
     // Parent info
     @Column(name = "first_name", nullable = false, length = 100)

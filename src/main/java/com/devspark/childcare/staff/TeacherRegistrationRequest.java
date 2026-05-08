@@ -19,8 +19,9 @@ public class TeacherRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "request_id", columnDefinition = "CHAR(36)")
-    private String requestId;
+    @org.hibernate.annotations.JdbcTypeCode(java.sql.Types.VARCHAR)
+    @Column(name = "request_id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
+    private UUID requestId;
 
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
