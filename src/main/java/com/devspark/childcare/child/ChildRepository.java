@@ -9,4 +9,6 @@ import java.util.UUID;
 @Repository
 public interface ChildRepository extends JpaRepository<Child, UUID> {
     List<Child> findByParentId(UUID parentId);
+    List<Child> findByStatus(ChildStatus status);
+    boolean existsByFirstNameAndLastNameAndDobAndParentId(String firstName, String lastName, java.time.LocalDate dob, UUID parentId);
 }

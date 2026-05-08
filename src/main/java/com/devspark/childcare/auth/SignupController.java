@@ -20,12 +20,14 @@ public class SignupController {
 
     @PostMapping("/teacher/request")
     public ApiResponse<String> submitTeacherRequest(@RequestBody TeacherSignupRequestDto dto) {
+        String designationStr = dto.getDesignation() != null ? dto.getDesignation().toUpperCase() : "JUNIOR";
+        
         TeacherRegistrationRequest request = TeacherRegistrationRequest.builder()
                 .fullName(dto.getFullName())
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .address(dto.getAddress())
-                .designation(TeacherRegistrationRequest.Designation.valueOf(dto.getDesignation()))
+                .designation(TeacherRegistrationRequest.Designation.valueOf(designationStr))
                 .experience(dto.getExperience())
                 .build();
 

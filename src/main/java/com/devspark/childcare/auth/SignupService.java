@@ -80,7 +80,7 @@ public class SignupService {
             accountRepository.save(account);
 
             // Notify admin
-            // emailService.notifyAdminNewRequest(request.getFullName(), request.getEmail(), "teacher");
+            emailService.notifyAdminNewRequest(request.getFullName(), request.getEmail(), "teacher");
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for teacher: ", e);
@@ -131,7 +131,7 @@ public class SignupService {
 
             // Notify admin
             String fullName = request.getFirstName() + " " + request.getLastName();
-            // emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+            emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for parent: ", e);
@@ -149,11 +149,12 @@ public class SignupService {
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", Account.Role.ADMIN.name());
 
+            // Firebase user is created ENABLED — no OTP verification needed for admin
             UserRecord.CreateRequest firebaseRequest = new UserRecord.CreateRequest()
                     .setEmail(request.getEmail())
                     .setPassword(plainPassword)
                     .setDisplayName(request.getFullName())
-                    .setDisabled(true);
+                    .setDisabled(false);
 
             UserRecord userRecord = FirebaseAuth.getInstance().createUser(firebaseRequest);
             String firebaseUid = userRecord.getUid();
@@ -163,31 +164,24 @@ public class SignupService {
             request.setStatus(DirectorRegistrationRequest.RequestStatus.APPROVED);
             directorRequestRepository.save(request);
 
+            // Account is immediately ACTIVE and verified — admin can login right away
             Account account = Account.builder()
                     .email(request.getEmail())
                     .passwordHash(request.getPasswordHash())
                     .firebaseUid(firebaseUid)
                     .role(Account.Role.ADMIN)
-                    .verified(false)
-                    .status(Account.Status.INACTIVE)
+                    .verified(true)
+                    .status(Account.Status.ACTIVE)
                     .build();
             Account savedAccount = accountRepository.save(account);
 
-            // AUTO-APPROVE: Generate and send OTP immediately
-            String otp = generateOtp();
-            otpTokenRepository.save(OtpToken.builder()
-                    .account(savedAccount)
-                    .otpCode(otp)
-                    .expiresAt(LocalDateTime.now().plusHours(1))
-                    .build());
+            // Create Admin profile immediately
+            Admin admin = new Admin();
+            admin.setAccount(savedAccount);
+            admin.setFullName(request.getFullName());
+            adminRepository.save(admin);
 
-            try {
-                emailService.sendOtpEmail(request.getEmail(), otp); // Old code had request.getFullName(), otp, but current EmailService signature might differ
-            } catch (Exception e) {
-                log.error("Failed to send OTP email to {}: {}", request.getEmail(), e.getMessage());
-                // Don't rethrow - allow registration to continue even if email fails
-            }
-            log.info("Admin auto-approved and OTP saved in DB for: {}", request.getEmail());
+            log.info("Admin account created and fully activated for: {}", request.getEmail());
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for director: ", e);
@@ -212,7 +206,7 @@ public class SignupService {
         otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(LocalDateTime.now().plusHours(24))
                 .build());
 
         emailService.sendOtpEmail(request.getEmail(), otp);
@@ -233,7 +227,7 @@ public class SignupService {
         otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(LocalDateTime.now().plusHours(24))
                 .build());
 
         emailService.sendOtpEmail(request.getEmail(), otp);
@@ -254,7 +248,7 @@ public class SignupService {
         otpTokenRepository.save(OtpToken.builder()
                 .account(account)
                 .otpCode(otp)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(LocalDateTime.now().plusHours(24))
                 .build());
 
         emailService.sendOtpEmail(request.getEmail(), otp);
@@ -280,7 +274,7 @@ public class SignupService {
                         return OtpToken.builder()
                             .account(acc)
                             .otpCode("000000")
-                            .expiresAt(LocalDateTime.now().plusHours(1))
+                            .expiresAt(LocalDateTime.now().plusHours(24))
                             .build();
                     });
         } else {
@@ -354,22 +348,15 @@ public class SignupService {
             }
 
         } else if (account.getRole() == Account.Role.ADMIN) {
-            DirectorRegistrationRequest request = directorRequestRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Admin registration request not found"));
-
-            Admin admin = new Admin();
-            admin.setAccount(account);
-            admin.setFullName(request.getFullName());
-            // Other fields not in DB currently
-            adminRepository.save(admin);
-            log.info("Admin profile created and account fully activated for: {}", email);
+            // Admin accounts are fully activated at signup — no OTP needed
+            log.warn("OTP verification attempted for already-active admin account: {}", email);
         }
     }
 
     // ─── Reject Requests ─────────────────────────────────────────────────
 
     @Transactional
-    public void rejectTeacherRequest(String requestId) {
+    public void rejectTeacherRequest(String requestId, String reason) {
         TeacherRegistrationRequest request = teacherRequestRepository.findById(UUID.fromString(requestId))
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
@@ -380,10 +367,12 @@ public class SignupService {
 
         accountRepository.findByEmail(request.getEmail())
                 .ifPresent(accountRepository::delete);
+        
+        log.info("Teacher request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
     @Transactional
-    public void rejectParentRequest(String requestId) {
+    public void rejectParentRequest(String requestId, String reason) {
         ParentRegistrationRequest request = parentRequestRepository.findById(UUID.fromString(requestId))
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
@@ -392,12 +381,11 @@ public class SignupService {
 
         deleteFirebaseUser(request.getEmail());
         
-        // Cannot delete parent account here because it is a dummy account created by Admin
-        // It needs to be kept so parent can try again, or Admin should delete it separately.
+        log.info("Parent request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
     @Transactional
-    public void rejectDirectorRequest(String requestId) {
+    public void rejectDirectorRequest(String requestId, String reason) {
         DirectorRegistrationRequest request = directorRequestRepository.findById(UUID.fromString(requestId))
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
@@ -408,6 +396,8 @@ public class SignupService {
 
         accountRepository.findByEmail(request.getEmail())
                 .ifPresent(accountRepository::delete);
+        
+        log.info("Director request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
     // ─── Pending Request Lists ────────────────────────────────────────────
@@ -463,6 +453,95 @@ public class SignupService {
                                 + " | Capacity: " + r.getCapacity())
                         .build())
                 .toList();
+    }
+
+    @Transactional
+    public void deleteParent(String parentId) {
+        UUID id = UUID.fromString(parentId);
+        Parent parent = parentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Parent not found"));
+        
+        parent.setDeleted(true);
+        parent.setDeletedAt(java.time.LocalDateTime.now());
+        parentRepository.save(parent);
+
+        if (parent.getAccount() != null) {
+            Account account = parent.getAccount();
+            account.setDeleted(true);
+            account.setDeletedAt(java.time.LocalDateTime.now());
+            accountRepository.save(account);
+        }
+    }
+
+    @Transactional
+    public void deleteChild(String childId) {
+        UUID id = UUID.fromString(childId);
+        Child child = childRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Child not found"));
+        
+        child.setDeleted(true);
+        child.setDeletedAt(java.time.LocalDateTime.now());
+        childRepository.save(child);
+    }
+
+    @Transactional
+    public void deleteTeacher(String teacherId) {
+        UUID id = UUID.fromString(teacherId);
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Teacher not found"));
+        
+        teacher.setDeleted(true);
+        teacher.setDeletedAt(java.time.LocalDateTime.now());
+        teacherRepository.save(teacher);
+
+        if (teacher.getAccount() != null) {
+            Account account = teacher.getAccount();
+            account.setDeleted(true);
+            account.setDeletedAt(java.time.LocalDateTime.now());
+            accountRepository.save(account);
+        }
+    }
+
+    public List<com.devspark.childcare.staff.dto.TeacherResponseDto> getAllTeachers() {
+        return teacherRepository.findAll().stream()
+                .map(t -> com.devspark.childcare.staff.dto.TeacherResponseDto.builder()
+                        .teacherId(t.getTeacherId())
+                        .firstName(t.getFullName().split(" ")[0])
+                        .lastName(t.getFullName().contains(" ") ? t.getFullName().substring(t.getFullName().indexOf(" ") + 1) : "")
+                        .email(t.getAccount().getEmail())
+                        .role(t.getDesignation().name())
+                        .status(t.getAccount().getStatus().name())
+                        .phoneNumber("N/A") // Add field if exists in Teacher
+                        .address("N/A")     // Add field if exists in Teacher
+                        .createdAt(t.getCreatedAt())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public com.devspark.childcare.auth.dto.AdminStatsDto getAdminStats() {
+        return com.devspark.childcare.auth.dto.AdminStatsDto.builder()
+                .totalStudents(childRepository.count())
+                .totalStaff(teacherRepository.count())
+                .totalParents(parentRepository.count())
+                .build();
+    }
+
+    public List<com.devspark.childcare.auth.dto.ParentResponseDto> getAllParents() {
+        return parentRepository.findAll().stream()
+                .map(p -> com.devspark.childcare.auth.dto.ParentResponseDto.builder()
+                        .parentId(p.getParentId())
+                        .fullName(p.getFullName())
+                        .email(p.getAccount().getEmail())
+                        .phone(p.getPhone())
+                        .nic(p.getNic())
+                        .relationship(p.getRelationship() != null ? p.getRelationship().name() : null)
+                        .status(p.getAccount().getStatus().name())
+                        .account(com.devspark.childcare.auth.dto.ParentResponseDto.AccountDto.builder()
+                                .email(p.getAccount().getEmail())
+                                .status(p.getAccount().getStatus().name())
+                                .build())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // ─── Forgot Password ──────────────────────────────────────────────────
