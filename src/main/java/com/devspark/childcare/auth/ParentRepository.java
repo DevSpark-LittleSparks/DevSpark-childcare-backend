@@ -9,4 +9,5 @@ import java.util.UUID;
 @Repository
 public interface ParentRepository extends JpaRepository<Parent, UUID> {
     Optional<Parent> findByAccountAccountId(UUID accountId);
+    Optional<Parent> findByAccountEmail(String email);
 }
