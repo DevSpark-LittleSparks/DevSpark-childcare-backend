@@ -118,4 +118,24 @@ public class AdminController {
         signupService.rejectDirectorRequest(requestId, reason);
         return ApiResponse.success("Director request rejected.", null);
     }
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<com.devspark.childcare.auth.dto.AdminProfileResponseDto> getProfile(java.security.Principal principal) {
+        return ApiResponse.success("Admin profile fetched", signupService.getAdminProfile(principal.getName()));
+    }
+
+    @PutMapping("/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> updateProfile(java.security.Principal principal, @RequestBody com.devspark.childcare.auth.dto.AdminProfileResponseDto dto) {
+        signupService.updateAdminProfile(principal.getName(), dto);
+        return ApiResponse.success("Admin profile updated successfully", null);
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> changePassword(java.security.Principal principal, @RequestBody com.devspark.childcare.auth.dto.ChangePasswordRequestDto dto) {
+        signupService.changePassword(principal.getName(), dto);
+        return ApiResponse.success("Password updated successfully", null);
+    }
 }

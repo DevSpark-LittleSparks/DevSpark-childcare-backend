@@ -175,10 +175,14 @@ public class SignupService {
                     .build();
             Account savedAccount = accountRepository.save(account);
 
-            // Create Admin profile immediately
+            // Create Admin profile immediately with data from request
             Admin admin = new Admin();
             admin.setAccount(savedAccount);
             admin.setFullName(request.getFullName());
+            admin.setCenterName(request.getCenterName());
+            admin.setCapacity(request.getCapacity() != null ? String.valueOf(request.getCapacity()) : null);
+            admin.setAddress(request.getCenterAddress() != null ? request.getCenterAddress() : request.getAddress());
+            admin.setPhone1(request.getPhone());
             adminRepository.save(admin);
 
             log.info("Admin account created and fully activated for: {}", request.getEmail());
@@ -316,8 +320,10 @@ public class SignupService {
             Teacher teacher = Teacher.builder()
                     .account(account)
                     .fullName(request.getFullName())
-                    .designation(Teacher.Designation.JUNIOR) // Default
-                    .maxDailyActivities(2)
+                    .designation(Teacher.Designation.valueOf(request.getDesignation().name()))
+                    .phone(request.getPhone())
+                    .address(request.getAddress())
+                    .maxDailyActivities(2) // Default
                     .build();
             teacherRepository.save(teacher);
 
@@ -577,5 +583,101 @@ public class SignupService {
         } catch (Exception e) {
             log.warn("Could not delete Firebase user for {}: {}", email, e.getMessage());
         }
+    }
+
+    public com.devspark.childcare.auth.dto.AdminProfileResponseDto getAdminProfile(String email) {
+        Admin admin = adminRepository.findByAccountEmail(email)
+                .orElseThrow(() -> new RuntimeException("Admin profile not found"));
+        
+        return com.devspark.childcare.auth.dto.AdminProfileResponseDto.builder()
+                .adminId(admin.getAdminId())
+                .fullName(admin.getFullName())
+                .email(admin.getAccount().getEmail())
+                .profilePic(admin.getProfilePic())
+                .role(admin.getAccount().getRole().name())
+                .phone1(admin.getPhone1())
+                .phone2(admin.getPhone2())
+                .address(admin.getAddress())
+                .centerName(admin.getCenterName())
+                .capacity(admin.getCapacity())
+                .build();
+    }
+
+    @Transactional
+    public void updateAdminProfile(String email, com.devspark.childcare.auth.dto.AdminProfileResponseDto dto) {
+        Admin admin = adminRepository.findByAccountEmail(email)
+                .orElseThrow(() -> new RuntimeException("Admin profile not found"));
+        
+        admin.setFullName(dto.getFullName());
+        if (dto.getProfilePic() != null) {
+            admin.setProfilePic(dto.getProfilePic());
+        }
+        admin.setPhone1(dto.getPhone1());
+        admin.setPhone2(dto.getPhone2());
+        admin.setAddress(dto.getAddress());
+        admin.setCenterName(dto.getCenterName());
+        admin.setCapacity(dto.getCapacity());
+        
+        adminRepository.save(admin);
+    }
+
+    @Transactional
+    public void changePassword(String email, com.devspark.childcare.auth.dto.ChangePasswordRequestDto dto) {
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), account.getPassword())) {
+            throw new RuntimeException("Invalid current password");
+        }
+
+        String encodedPassword = passwordEncoder.encode(dto.getNewPassword());
+        account.setPassword(encodedPassword);
+        accountRepository.save(account);
+
+        try {
+            com.google.firebase.auth.UserRecord user = FirebaseAuth.getInstance().getUserByEmail(email);
+            com.google.firebase.auth.UserRecord.UpdateRequest request = new com.google.firebase.auth.UserRecord.UpdateRequest(user.getUid())
+                    .setPassword(dto.getNewPassword());
+            FirebaseAuth.getInstance().updateUser(request);
+            log.info("Password updated in Firebase for user: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to update password in Firebase: {}", e.getMessage());
+            throw new RuntimeException("Failed to sync password with authentication service");
+        }
+    }
+
+    public com.devspark.childcare.auth.dto.UserProfileResponseDto getCurrentUserProfile(String email) {
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        String fullName = "User";
+        String profilePic = null;
+
+        if (account.getRole() == Account.Role.ADMIN) {
+            Admin admin = adminRepository.findByAccountEmail(email).orElse(null);
+            if (admin != null) {
+                fullName = admin.getFullName();
+                profilePic = admin.getProfilePic();
+            }
+        } else if (account.getRole() == Account.Role.TEACHER) {
+            Teacher teacher = teacherRepository.findByAccountEmail(email).orElse(null);
+            if (teacher != null) {
+                fullName = teacher.getFullName();
+                profilePic = teacher.getProfilePicture();
+            }
+        } else if (account.getRole() == Account.Role.PARENT) {
+            Parent parent = parentRepository.findByAccountEmail(email).orElse(null);
+            if (parent != null) {
+                fullName = parent.getFullName();
+                profilePic = parent.getProfilePicture();
+            }
+        }
+
+        return com.devspark.childcare.auth.dto.UserProfileResponseDto.builder()
+                .fullName(fullName)
+                .email(email)
+                .role(account.getRole().name())
+                .profilePic(profilePic)
+                .build();
     }
 }

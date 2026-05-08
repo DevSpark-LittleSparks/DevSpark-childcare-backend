@@ -28,4 +28,22 @@ public class Admin extends AuditableEntity {
 
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
+
+    @Column(name = "profile_pic")
+    private String profilePic;
+
+    @Column(name = "phone1", length = 20)
+    private String phone1;
+
+    @Column(name = "phone2", length = 20)
+    private String phone2;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "center_name", length = 150)
+    private String centerName;
+
+    @Column(name = "capacity", length = 50)
+    private String capacity;
 }
