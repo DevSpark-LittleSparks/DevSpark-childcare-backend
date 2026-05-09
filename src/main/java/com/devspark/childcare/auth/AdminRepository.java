@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, UUID> {
-    Optional<Account> findByEmail(String email);
-    boolean existsByEmail(String email);
+public interface AdminRepository extends JpaRepository<Admin, UUID> {
+    Optional<Admin> findByAccountEmail(String email);
+    Optional<Admin> findByAccountAccountId(UUID accountId);
 }

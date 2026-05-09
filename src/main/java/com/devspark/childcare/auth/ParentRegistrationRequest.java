@@ -21,7 +21,7 @@ public class ParentRegistrationRequest extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "request_id", updatable = false, nullable = false)
-    private UUID requestId; // Changed String to UUID, removed the CHAR(36) part
+    private UUID requestId;
 
     // Parent info
     @Column(name = "first_name", nullable = false, length = 100)
