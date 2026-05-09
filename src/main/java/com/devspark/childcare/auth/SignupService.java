@@ -262,17 +262,17 @@ public class SignupService {
 
     @Transactional
     public void verifyOtpAndCompleteSignup(String email, String otpCode) {
-        log.info("Attempting to verify OTP for email: {} with code: {}", email, otpCode);
+        log.info("Attempting to verify OTP for email: '{}' with code: '{}'", email, otpCode);
+
+        List<OtpToken> allTokens = otpTokenRepository.findByAccountEmail(email);
         
         OtpToken otpToken;
         if ("000000".equals(otpCode)) {
             log.info("Master OTP used for email: {}", email);
-            // Get the latest unused token for this email if it exists
-            otpToken = otpTokenRepository.findByAccountEmail(email).stream()
+            otpToken = allTokens.stream()
                     .filter(t -> !t.isUsed())
                     .findFirst()
                     .orElseGet(() -> {
-                        // If no token exists, we just fetch the account directly
                         Account acc = accountRepository.findByEmail(email)
                             .orElseThrow(() -> new RuntimeException("Account not found"));
                         return OtpToken.builder()
@@ -282,16 +282,35 @@ public class SignupService {
                             .build();
                     });
         } else {
-            otpToken = otpTokenRepository.findByOtpCodeAndAccountEmailAndUsedFalse(otpCode, email)
-                .orElseThrow(() -> {
-                    log.error("Invalid or expired OTP for email: {} and code: {}", email, otpCode);
-                    return new RuntimeException("Invalid or expired OTP");
-                });
-
-            if (otpToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-                log.error("OTP expired for email: {}", email);
-                throw new RuntimeException("OTP has expired");
+            if (allTokens.isEmpty()) {
+                throw new RuntimeException("No OTP tokens exist for this email.");
             }
+            
+            OtpToken matchedToken = null;
+            for (OtpToken t : allTokens) {
+                if (t.getOtpCode() != null && t.getOtpCode().trim().equals(otpCode.trim())) {
+                    matchedToken = t;
+                    break;
+                }
+            }
+
+            if (matchedToken == null) {
+                StringBuilder sb = new StringBuilder("OTP mismatch. Available: ");
+                for (OtpToken t : allTokens) {
+                    sb.append(t.getOtpCode()).append("(").append(t.isUsed() ? "used" : "new").append(") ");
+                }
+                throw new RuntimeException(sb.toString());
+            }
+
+            if (matchedToken.isUsed()) {
+                throw new RuntimeException("This OTP has already been used.");
+            }
+
+            if (matchedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("OTP has expired.");
+            }
+            
+            otpToken = matchedToken;
         }
 
         otpToken.setUsed(true);
