@@ -54,6 +54,11 @@ public class Child extends AuditableEntity {
     @Column(name = "profile_pic", length = 500)
     private String profilePic;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ChildStatus status = ChildStatus.ENROLLED;
+
     public enum Gender {
         MALE, FEMALE, OTHER
     }
