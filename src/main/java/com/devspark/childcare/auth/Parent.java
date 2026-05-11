@@ -42,7 +42,7 @@ public class Parent extends AuditableEntity {
     @Column(nullable = false)
     private Relationship relationship;
 
-    @Column(name = "profile_picture", length = 500)
+    @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
 
     public enum Relationship {
