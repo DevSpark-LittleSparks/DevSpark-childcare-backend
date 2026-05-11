@@ -36,32 +36,40 @@ public class NotificationController {
 
         UUID userUuid = account.getAccountId();
         NotificationTarget.TargetType userRoleType = NotificationTarget.TargetType.valueOf(role.toUpperCase());
-
+        
         // 1. Fetch targets
-        List<NotificationTarget> personalTargets = notificationTargetRepository.findByTargetRefId(userUuid);
-        List<NotificationTarget> roleBroadcasts = notificationTargetRepository.findByTargetTypeAndTargetRefIdIsNull(userRoleType);
-        List<NotificationTarget> globalBroadcasts = notificationTargetRepository.findByTargetTypeAndTargetRefIdIsNull(NotificationTarget.TargetType.ALL);
+        List<NotificationTarget> allTargets = notificationTargetRepository.findByTargetRefId(userUuid);
+        
+        List<Notification> alerts;
+        if (account.getRole() == com.devspark.childcare.auth.Account.Role.ADMIN) {
+            // Admins see all SYSTEM and ADMIN_REQUEST notifications
+            alerts = notificationRepository.findAll().stream()
+                    .filter(n -> n.getType() == Notification.Type.SYSTEM || n.getType() == Notification.Type.ADMIN_REQUEST)
+                    .collect(java.util.stream.Collectors.toList());
+        } else {
+            // Others see broadcasts + targeted notifications
+            List<Notification> globalBroadcasts = notificationRepository.findByType(Notification.Type.BROADCAST);
+            alerts = allTargets.stream()
+                    .map(target -> notificationRepository.findById(target.getNotificationId()).orElse(null))
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toList());
+            alerts.addAll(globalBroadcasts);
+        }
 
-        java.util.Set<NotificationTarget> allTargets = new java.util.HashSet<>();
-        allTargets.addAll(personalTargets);
-        allTargets.addAll(roleBroadcasts);
-        allTargets.addAll(globalBroadcasts);
+        List<com.devspark.childcare.comms.dto.NotificationResponseDto> response = alerts.stream()
+                .map(notif -> {
+                    boolean alreadyRead = notificationReadRepository.existsByAccountIdAndNotificationId(userUuid, notif.getNotificationId());
 
-        List<com.devspark.childcare.comms.dto.NotificationResponseDto> response = allTargets.stream()
-                .map(target -> {
-                    return notificationRepository.findById(target.getNotificationId())
-                            .map(notif -> com.devspark.childcare.comms.dto.NotificationResponseDto.builder()
-                                    .id(notif.getNotificationId().toString())
-                                    .title(notif.getTitle())
-                                    .body(notif.getBody())
-                                    .priority(notif.getPriority())
-                                    .type(notif.getType())
-                                    .isRead(notificationReadRepository.existsByAccountIdAndNotificationId(userUuid, notif.getNotificationId()))
-                                    .createdAt(notif.getCreatedAt())
-                                    .build());
+                    return com.devspark.childcare.comms.dto.NotificationResponseDto.builder()
+                            .id(notif.getNotificationId().toString())
+                            .title(notif.getTitle())
+                            .body(notif.getBody())
+                            .priority(notif.getPriority())
+                            .type(notif.getType())
+                            .isRead(alreadyRead)
+                            .createdAt(notif.getCreatedAt())
+                            .build();
                 })
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
                 .sorted(java.util.Comparator.comparing(com.devspark.childcare.comms.dto.NotificationResponseDto::getCreatedAt, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
@@ -70,11 +78,10 @@ public class NotificationController {
 
     @PutMapping("/{id}/read")
     public ApiResponse<Object> markAsRead(@PathVariable("id") String id, @RequestParam("userId") String userId) {
-        System.out.println("DEBUG: markAsRead for ID: " + id + ", User: " + userId);
-        
         com.devspark.childcare.auth.Account account = accountRepository.findByFirebaseUid(userId).orElse(null);
         if (account != null) {
             UUID notificationUuid = UUID.fromString(id);
+
             if (!notificationReadRepository.existsByAccountIdAndNotificationId(account.getAccountId(), notificationUuid)) {
                 NotificationRead readRecord = NotificationRead.builder()
                         .accountId(account.getAccountId())
@@ -83,7 +90,23 @@ public class NotificationController {
                 notificationReadRepository.save(readRecord);
             }
         }
-        
+
         return ApiResponse.success("Marked as read successfully", null);
+    }
+
+    @PostMapping("/submit-request")
+    public ApiResponse<String> submitAdminRequest(@RequestParam String userId, @RequestParam String type, @RequestBody String description) {
+        com.devspark.childcare.auth.Account account = accountRepository.findByFirebaseUid(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        Notification requestNotif = Notification.builder()
+                .title("Admin Request: " + type)
+                .body("From: " + account.getEmail() + " (" + account.getRole() + ")\n\n" + description)
+                .type(Notification.Type.ADMIN_REQUEST)
+                .priority(Notification.Priority.NORMAL)
+                .build();
+
+        notificationRepository.save(requestNotif);
+        return ApiResponse.success("Request submitted to administration", null);
     }
 }

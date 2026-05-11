@@ -36,4 +36,10 @@ public class ParentController {
         signupService.changePassword(principal.getName(), dto);
         return ApiResponse.success("Password updated", null);
     }
+
+    @GetMapping("/child/{id}")
+    @PreAuthorize("hasRole('PARENT')")
+    public ApiResponse<com.devspark.childcare.child.dto.ChildResponseDto> getChildProfile(Principal principal, @PathVariable String id) {
+        return ApiResponse.success("Child profile fetched", parentService.getChildProfile(principal.getName(), java.util.UUID.fromString(id)));
+    }
 }

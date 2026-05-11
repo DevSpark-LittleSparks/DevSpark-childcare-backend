@@ -43,6 +43,6 @@ public class Notification extends AuditableEntity {
     }
 
     public enum Type {
-        BROADCAST, SYSTEM
+        BROADCAST, SYSTEM, ADMIN_REQUEST
     }
 }

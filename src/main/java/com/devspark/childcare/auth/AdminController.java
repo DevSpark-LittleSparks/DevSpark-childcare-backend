@@ -14,6 +14,14 @@ public class AdminController {
 
     private final SignupService signupService;
     private final com.devspark.childcare.child.ChildService childService;
+    private final com.devspark.childcare.comms.AnnouncementService announcementService;
+
+    @PostMapping("/broadcast")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> broadcast(@RequestBody com.devspark.childcare.comms.dto.BroadcastRequestDto dto) {
+        announcementService.broadcast(dto);
+        return ApiResponse.success("Announcement broadcasted successfully.", null);
+    }
 
     @PostMapping("/approve-teacher/{requestId}")
     @PreAuthorize("hasRole('ADMIN')")
