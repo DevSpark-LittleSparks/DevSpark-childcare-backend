@@ -67,6 +67,12 @@ public class AdminController {
         return ApiResponse.success("Teachers fetched successfully", signupService.getAllTeachers());
     }
 
+    @GetMapping("/all-children")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<com.devspark.childcare.child.dto.ChildResponseDto>> getAllChildren() {
+        return ApiResponse.success("Children fetched successfully", childService.getAllChildren());
+    }
+
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<com.devspark.childcare.auth.dto.AdminStatsDto> getStats() {

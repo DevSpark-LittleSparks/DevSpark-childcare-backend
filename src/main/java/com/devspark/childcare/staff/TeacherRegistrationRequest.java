@@ -41,8 +41,6 @@ public class TeacherRegistrationRequest extends AuditableEntity {
     @Column(name = "experience", length = 100)
     private String experience;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

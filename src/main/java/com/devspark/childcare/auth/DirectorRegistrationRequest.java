@@ -43,8 +43,6 @@ public class DirectorRegistrationRequest extends AuditableEntity {
     @Column(name = "capacity")
     private Integer capacity;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
