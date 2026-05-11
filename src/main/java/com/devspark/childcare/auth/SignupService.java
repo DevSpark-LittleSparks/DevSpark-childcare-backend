@@ -11,7 +11,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,6 @@ public class SignupService {
     private final ChildRepository childRepository;
     private final AdminRepository adminRepository;
     private final EmailService emailService;
-    private final PasswordEncoder passwordEncoder;
 
     // ─── Submit Requests ──────────────────────────────────────────────────
 
@@ -66,17 +64,15 @@ public class SignupService {
             String firebaseUid = userRecord.getUid();
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
-            request.setPasswordHash(passwordEncoder.encode(plainPassword));
             teacherRequestRepository.save(request);
 
             Account account = Account.builder()
-                    .email(request.getEmail())
-                    .passwordHash(request.getPasswordHash())
-                    .firebaseUid(firebaseUid)
-                    .role(Account.Role.TEACHER)
-                    .verified(false)
-                    .status(Account.Status.INACTIVE)
-                    .build();
+                     .email(request.getEmail())
+                     .firebaseUid(firebaseUid)
+                     .role(Account.Role.TEACHER)
+                     .verified(false)
+                     .status(Account.Status.INACTIVE)
+                     .build();
             accountRepository.save(account);
 
             // Notify admin
@@ -93,7 +89,8 @@ public class SignupService {
         // ── P0: Email must be pre-registered by admin during child admissions ──
         Account existingAccount = accountRepository.findByEmail(request.getEmail()).orElse(null);
         if (existingAccount == null || existingAccount.getRole() != Account.Role.PARENT) {
-            throw new RuntimeException("This email is not recognized as a registered guardian's email. Please ensure your child's enrollment is completed by the school before signing up.");
+            throw new RuntimeException(
+                    "This email is not recognized as a registered guardian's email. Please ensure your child's enrollment is completed by the school before signing up.");
         }
 
         if (existingAccount.getFirebaseUid() != null && !existingAccount.getFirebaseUid().isEmpty()) {
@@ -120,11 +117,9 @@ public class SignupService {
             String firebaseUid = userRecord.getUid();
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
-            request.setPasswordHash(passwordEncoder.encode(plainPassword));
             parentRequestRepository.save(request);
 
             // Update dummy account created by admin
-            existingAccount.setPasswordHash(request.getPasswordHash());
             existingAccount.setFirebaseUid(firebaseUid);
             // Status remains INACTIVE until OTP verification
             accountRepository.save(existingAccount);
@@ -160,14 +155,11 @@ public class SignupService {
             String firebaseUid = userRecord.getUid();
             FirebaseAuth.getInstance().setCustomUserClaims(firebaseUid, claims);
 
-            request.setPasswordHash(passwordEncoder.encode(plainPassword));
             request.setStatus(DirectorRegistrationRequest.RequestStatus.APPROVED);
             directorRequestRepository.save(request);
 
-            // Account is immediately ACTIVE and verified — admin can login right away
             Account account = Account.builder()
                     .email(request.getEmail())
-                    .passwordHash(request.getPasswordHash())
                     .firebaseUid(firebaseUid)
                     .role(Account.Role.ADMIN)
                     .verified(true)
@@ -265,7 +257,7 @@ public class SignupService {
         log.info("Attempting to verify OTP for email: '{}' with code: '{}'", email, otpCode);
 
         List<OtpToken> allTokens = otpTokenRepository.findByAccountEmail(email);
-        
+
         OtpToken otpToken;
         if ("000000".equals(otpCode)) {
             log.info("Master OTP used for email: {}", email);
@@ -274,18 +266,18 @@ public class SignupService {
                     .findFirst()
                     .orElseGet(() -> {
                         Account acc = accountRepository.findByEmail(email)
-                            .orElseThrow(() -> new RuntimeException("Account not found"));
+                                .orElseThrow(() -> new RuntimeException("Account not found"));
                         return OtpToken.builder()
-                            .account(acc)
-                            .otpCode("000000")
-                            .expiresAt(LocalDateTime.now().plusHours(24))
-                            .build();
+                                .account(acc)
+                                .otpCode("000000")
+                                .expiresAt(LocalDateTime.now().plusHours(24))
+                                .build();
                     });
         } else {
             if (allTokens.isEmpty()) {
                 throw new RuntimeException("No OTP tokens exist for this email.");
             }
-            
+
             OtpToken matchedToken = null;
             for (OtpToken t : allTokens) {
                 if (t.getOtpCode() != null && t.getOtpCode().trim().equals(otpCode.trim())) {
@@ -309,7 +301,7 @@ public class SignupService {
             if (matchedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
                 throw new RuntimeException("OTP has expired.");
             }
-            
+
             otpToken = matchedToken;
         }
 
@@ -324,8 +316,7 @@ public class SignupService {
         // Enable Firebase user
         try {
             FirebaseAuth.getInstance().updateUser(
-                new UserRecord.UpdateRequest(account.getFirebaseUid()).setDisabled(false)
-            );
+                    new UserRecord.UpdateRequest(account.getFirebaseUid()).setDisabled(false));
         } catch (Exception e) {
             log.error("Error enabling Firebase user: ", e);
             throw new RuntimeException("Failed to enable user in Firebase");
@@ -392,7 +383,7 @@ public class SignupService {
 
         accountRepository.findByEmail(request.getEmail())
                 .ifPresent(accountRepository::delete);
-        
+
         log.info("Teacher request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
@@ -405,7 +396,7 @@ public class SignupService {
         parentRequestRepository.save(request);
 
         deleteFirebaseUser(request.getEmail());
-        
+
         log.info("Parent request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
@@ -421,7 +412,7 @@ public class SignupService {
 
         accountRepository.findByEmail(request.getEmail())
                 .ifPresent(accountRepository::delete);
-        
+
         log.info("Director request rejected for requestId: {}. Reason: {}", requestId, reason);
     }
 
@@ -485,7 +476,7 @@ public class SignupService {
         UUID id = UUID.fromString(parentId);
         Parent parent = parentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Parent not found"));
-        
+
         parent.setDeleted(true);
         parent.setDeletedAt(java.time.LocalDateTime.now());
         parentRepository.save(parent);
@@ -503,7 +494,7 @@ public class SignupService {
         UUID id = UUID.fromString(childId);
         Child child = childRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Child not found"));
-        
+
         child.setDeleted(true);
         child.setDeletedAt(java.time.LocalDateTime.now());
         childRepository.save(child);
@@ -514,7 +505,7 @@ public class SignupService {
         UUID id = UUID.fromString(teacherId);
         Teacher teacher = teacherRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
-        
+
         teacher.setDeleted(true);
         teacher.setDeletedAt(java.time.LocalDateTime.now());
         teacherRepository.save(teacher);
@@ -531,13 +522,17 @@ public class SignupService {
         return teacherRepository.findAll().stream()
                 .map(t -> com.devspark.childcare.staff.dto.TeacherResponseDto.builder()
                         .teacherId(t.getTeacherId())
-                        .firstName(t.getFullName().split(" ")[0])
-                        .lastName(t.getFullName().contains(" ") ? t.getFullName().substring(t.getFullName().indexOf(" ") + 1) : "")
-                        .email(t.getAccount().getEmail())
-                        .role(t.getDesignation().name())
-                        .status(t.getAccount().getStatus().name())
+                        .firstName(t.getFullName() != null ? t.getFullName().split(" ")[0] : "Unknown")
+                        .lastName(t.getFullName() != null && t.getFullName().contains(" ")
+                                ? t.getFullName().substring(t.getFullName().indexOf(" ") + 1)
+                                : "")
+                        .email(t.getAccount() != null ? t.getAccount().getEmail() : "Unknown")
+                        .role(t.getDesignation() != null ? t.getDesignation().name() : "N/A")
+                        .status(t.getAccount() != null && t.getAccount().getStatus() != null
+                                ? t.getAccount().getStatus().name()
+                                : "UNKNOWN")
                         .phoneNumber("N/A") // Add field if exists in Teacher
-                        .address("N/A")     // Add field if exists in Teacher
+                        .address("N/A") // Add field if exists in Teacher
                         .createdAt(t.getCreatedAt())
                         .build())
                 .collect(java.util.stream.Collectors.toList());
@@ -556,14 +551,18 @@ public class SignupService {
                 .map(p -> com.devspark.childcare.auth.dto.ParentResponseDto.builder()
                         .parentId(p.getParentId())
                         .fullName(p.getFullName())
-                        .email(p.getAccount().getEmail())
+                        .email(p.getAccount() != null ? p.getAccount().getEmail() : "Unknown")
                         .phone(p.getPhone())
                         .nic(p.getNic())
                         .relationship(p.getRelationship() != null ? p.getRelationship().name() : null)
-                        .status(p.getAccount().getStatus().name())
+                        .status(p.getAccount() != null && p.getAccount().getStatus() != null
+                                ? p.getAccount().getStatus().name()
+                                : "UNKNOWN")
                         .account(com.devspark.childcare.auth.dto.ParentResponseDto.AccountDto.builder()
-                                .email(p.getAccount().getEmail())
-                                .status(p.getAccount().getStatus().name())
+                                .email(p.getAccount() != null ? p.getAccount().getEmail() : "Unknown")
+                                .status(p.getAccount() != null && p.getAccount().getStatus() != null
+                                        ? p.getAccount().getStatus().name()
+                                        : "UNKNOWN")
                                 .build())
                         .build())
                 .collect(java.util.stream.Collectors.toList());
@@ -575,7 +574,7 @@ public class SignupService {
         try {
             if (!accountRepository.existsByEmail(email)) {
                 log.warn("Password reset requested for non-existent email: {}", email);
-                return; 
+                return;
             }
 
             String resetLink = FirebaseAuth.getInstance().generatePasswordResetLink(email);
@@ -595,8 +594,7 @@ public class SignupService {
 
     public void deleteFirebaseUser(String email) {
         try {
-            com.google.firebase.auth.UserRecord user =
-                    FirebaseAuth.getInstance().getUserByEmail(email);
+            com.google.firebase.auth.UserRecord user = FirebaseAuth.getInstance().getUserByEmail(email);
             FirebaseAuth.getInstance().deleteUser(user.getUid());
             log.info("Deleted Firebase user for rejected request: {}", email);
         } catch (Exception e) {
@@ -607,7 +605,7 @@ public class SignupService {
     public com.devspark.childcare.auth.dto.AdminProfileResponseDto getAdminProfile(String email) {
         Admin admin = adminRepository.findByAccountEmail(email)
                 .orElseThrow(() -> new RuntimeException("Admin profile not found"));
-        
+
         return com.devspark.childcare.auth.dto.AdminProfileResponseDto.builder()
                 .adminId(admin.getAdminId())
                 .fullName(admin.getFullName())
@@ -626,7 +624,7 @@ public class SignupService {
     public void updateAdminProfile(String email, com.devspark.childcare.auth.dto.AdminProfileResponseDto dto) {
         Admin admin = adminRepository.findByAccountEmail(email)
                 .orElseThrow(() -> new RuntimeException("Admin profile not found"));
-        
+
         admin.setFullName(dto.getFullName());
         if (dto.getProfilePic() != null) {
             admin.setProfilePic(dto.getProfilePic());
@@ -636,7 +634,7 @@ public class SignupService {
         admin.setAddress(dto.getAddress());
         admin.setCenterName(dto.getCenterName());
         admin.setCapacity(dto.getCapacity());
-        
+
         adminRepository.save(admin);
     }
 
@@ -645,17 +643,13 @@ public class SignupService {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        if (!passwordEncoder.matches(dto.getCurrentPassword(), account.getPassword())) {
-            throw new RuntimeException("Invalid current password");
-        }
-
-        String encodedPassword = passwordEncoder.encode(dto.getNewPassword());
-        account.setPassword(encodedPassword);
-        accountRepository.save(account);
+        // Local password verification and update removed as per Firebase-only requirements.
+        // accountRepository.save(account);
 
         try {
             com.google.firebase.auth.UserRecord user = FirebaseAuth.getInstance().getUserByEmail(email);
-            com.google.firebase.auth.UserRecord.UpdateRequest request = new com.google.firebase.auth.UserRecord.UpdateRequest(user.getUid())
+            com.google.firebase.auth.UserRecord.UpdateRequest request = new com.google.firebase.auth.UserRecord.UpdateRequest(
+                    user.getUid())
                     .setPassword(dto.getNewPassword());
             FirebaseAuth.getInstance().updateUser(request);
             log.info("Password updated in Firebase for user: {}", email);

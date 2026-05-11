@@ -1,5 +1,6 @@
 package com.devspark.childcare.child;
 
+// NOTE: Added comment per user request to remind about duplicate child check and parent handling
 import com.devspark.childcare.auth.Account;
 import com.devspark.childcare.auth.AccountRepository;
 import com.devspark.childcare.auth.Parent;
@@ -31,7 +32,7 @@ public class ChildService {
     public List<ChildResponseDto> getAllChildren() {
         return childRepository.findAll().stream()
                 .map(child -> {
-                    Parent parent = parentRepository.findById(child.getParentId()).orElse(null);
+                    Parent parent = child.getParentId() != null ? parentRepository.findById(child.getParentId()).orElse(null) : null;
                     String guardianName = parent != null ? parent.getFullName() : "Unknown";
                     String guardianEmail = (parent != null && parent.getAccount() != null) 
                             ? parent.getAccount().getEmail() : "Unknown";
@@ -41,12 +42,19 @@ public class ChildService {
                             .firstName(child.getFirstName())
                             .lastName(child.getLastName())
                             .dob(child.getDob())
-                            .gender(child.getGender().name())
+                            .gender(child.getGender() != null ? child.getGender().name() : null)
                             .bloodGroup(child.getBloodGroup())
                             .profilePic(child.getProfilePic())
+                            .height(child.getHeight() != null ? child.getHeight().doubleValue() : null)
+                            .weight(child.getWeight() != null ? child.getWeight().doubleValue() : null)
+                            .specialNote(child.getSpecialNote())
+                            .address(parent != null ? parent.getAddress() : null)
+                            .relationship(parent != null && parent.getRelationship() != null ? parent.getRelationship().name() : null)
+                            .parentContact(parent != null ? parent.getPhone() : null)
+                            .parentID(parent != null ? parent.getNic() : null)
                             .guardianName(guardianName)
                             .guardianEmail(guardianEmail)
-                            .status(child.getStatus().name())
+                            .status(child.getStatus() != null ? child.getStatus().name() : null)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -67,7 +75,6 @@ public class ChildService {
                 .orElseGet(() -> {
                     Account newAccount = Account.builder()
                             .email(dto.getParentEmail())
-                            .passwordHash("PRE_REGISTERED") // Placeholder until parent signs up
                             .role(Account.Role.PARENT)
                             .verified(false)
                             .status(Account.Status.INACTIVE)
@@ -130,12 +137,19 @@ public class ChildService {
                 .firstName(child.getFirstName())
                 .lastName(child.getLastName())
                 .dob(child.getDob())
-                .gender(child.getGender().name())
+                .gender(child.getGender() != null ? child.getGender().name() : null)
                 .bloodGroup(child.getBloodGroup())
                 .profilePic(child.getProfilePic())
+                .height(child.getHeight() != null ? child.getHeight().doubleValue() : null)
+                .weight(child.getWeight() != null ? child.getWeight().doubleValue() : null)
+                .specialNote(child.getSpecialNote())
+                .address(parent != null ? parent.getAddress() : null)
+                .relationship(parent != null && parent.getRelationship() != null ? parent.getRelationship().name() : null)
+                .parentContact(parent != null ? parent.getPhone() : null)
+                .parentID(parent != null ? parent.getNic() : null)
                 .guardianName(guardianName)
                 .guardianEmail(guardianEmail)
-                .status(child.getStatus().name())
+                .status(child.getStatus() != null ? child.getStatus().name() : null)
                 .build();
     }
 
