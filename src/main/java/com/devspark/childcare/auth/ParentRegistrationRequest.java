@@ -46,8 +46,6 @@ public class ParentRegistrationRequest extends AuditableEntity {
     @Column(nullable = false)
     private Relationship relationship;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     // Child info
     @Column(name = "child_first_name", length = 100)

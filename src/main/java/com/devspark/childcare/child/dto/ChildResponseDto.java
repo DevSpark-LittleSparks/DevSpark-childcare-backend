@@ -20,6 +20,13 @@ public class ChildResponseDto {
     private String gender;
     private String bloodGroup;
     private String profilePic;
+    private Double height;
+    private Double weight;
+    private String specialNote;
+    private String address;
+    private String relationship;
+    private String parentContact;
+    private String parentID;
     private String guardianName;
     private String guardianEmail;
     private String status;
