@@ -19,8 +19,8 @@ public class DirectorRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "request_id", columnDefinition = "CHAR(36)")
-    private String requestId;
+    @Column(name = "request_id", updatable = false, nullable = false)
+    private UUID requestId;
 
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
@@ -43,8 +43,6 @@ public class DirectorRegistrationRequest extends AuditableEntity {
     @Column(name = "capacity")
     private Integer capacity;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

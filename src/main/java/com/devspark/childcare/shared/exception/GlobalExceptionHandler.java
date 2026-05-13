@@ -49,8 +49,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleGeneral(Exception ex) {
-        // Log the actual error in the server console for debugging
         log.error("Unexpected error occurred", ex);
-        return ApiResponse.error("An unexpected error occurred. Please try again later.");
+        try {
+            java.io.FileWriter fw = new java.io.FileWriter("error_log.txt", true);
+            fw.write(java.time.LocalDateTime.now().toString() + " - " + ex.getMessage() + "\n");
+            for (StackTraceElement elem : ex.getStackTrace()) {
+                fw.write("\t" + elem.toString() + "\n");
+            }
+            fw.write("\n");
+            fw.close();
+        } catch (Exception ignored) {}
+        return ApiResponse.error("An unexpected error occurred. " + ex.getMessage());
     }
 }

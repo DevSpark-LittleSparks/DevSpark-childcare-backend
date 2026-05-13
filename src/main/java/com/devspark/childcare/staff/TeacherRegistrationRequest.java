@@ -19,8 +19,8 @@ public class TeacherRegistrationRequest extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "request_id", columnDefinition = "CHAR(36)")
-    private String requestId;
+    @Column(name = "request_id", updatable = false, nullable = false)
+    private UUID requestId;
 
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
@@ -41,8 +41,6 @@ public class TeacherRegistrationRequest extends AuditableEntity {
     @Column(name = "experience", length = 100)
     private String experience;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
