@@ -29,6 +29,7 @@ public class ParentService {
                         .name(c.getFirstName() + " " + c.getLastName())
                         .profilePic(c.getProfilePic())
                         .status(c.getStatus().name())
+                        .dob(c.getDob() != null ? c.getDob().toString() : null)
                         .build())
                 .collect(Collectors.toList());
 

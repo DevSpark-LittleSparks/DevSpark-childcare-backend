@@ -12,4 +12,5 @@ public class ChildSummaryDto {
     private String name;
     private String profilePic;
     private String status;
+    private String dob;
 }
