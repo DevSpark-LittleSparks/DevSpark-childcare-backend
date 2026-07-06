@@ -21,7 +21,7 @@ public class OtpToken extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "otp_id", updatable = false, nullable = false)
-    private UUID tokenId; // Changed from String to UUID, removed CHAR(36)
+    private UUID tokenId; 
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false) // Also removed the columnDefinition = "CHAR(36)" part from here
