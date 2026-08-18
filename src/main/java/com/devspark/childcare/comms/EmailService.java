@@ -44,7 +44,7 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("Admin notification sent for {} ({})", name, role);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send admin notification", e);
         }
     }
@@ -139,7 +139,7 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("OTP Email sent successfully to {}", to);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send HTML OTP email", e);
             throw new RuntimeException("Email sending failed");
         }
