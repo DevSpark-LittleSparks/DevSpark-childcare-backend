@@ -135,9 +135,14 @@ public class SignupService {
             // Status remains INACTIVE until OTP verification
             accountRepository.save(existingAccount);
 
-            // Notify admin
-            String fullName = request.getFirstName() + " " + request.getLastName();
-            emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+            // Notify admin - wrap in try-catch so signup doesn't fail if email server is
+            // slow
+            try {
+                String fullName = request.getFirstName() + " " + request.getLastName();
+                emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+            } catch (Exception emailEx) {
+                log.error("Silent failure: Could not send admin notification email for parent signup", emailEx);
+            }
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for parent: ", e);
@@ -351,7 +356,7 @@ public class SignupService {
             Teacher teacher = Teacher.builder()
                     .account(account)
                     .fullName(request.getFullName())
-                    .designation(Teacher.Designation.valueOf(request.getDesignation().name()))
+                    .designation(Teacher.Designation.JUNIOR)
                     .phone(request.getPhone())
                     .address(request.getAddress())
                     .maxDailyActivities(2) // Default
@@ -540,6 +545,7 @@ public class SignupService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<com.devspark.childcare.staff.dto.TeacherResponseDto> getAllTeachers() {
         return teacherRepository.findAll().stream()
                 .map(t -> com.devspark.childcare.staff.dto.TeacherResponseDto.builder()
@@ -569,6 +575,7 @@ public class SignupService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public List<com.devspark.childcare.auth.dto.ParentResponseDto> getAllParents() {
         return parentRepository.findAll().stream()
                 .map(p -> com.devspark.childcare.auth.dto.ParentResponseDto.builder()
@@ -625,6 +632,7 @@ public class SignupService {
         }
     }
 
+    @Transactional(readOnly = true)
     public com.devspark.childcare.auth.dto.AdminProfileResponseDto getAdminProfile(String email) {
         Admin admin = adminRepository.findByAccountEmail(email)
                 .orElseThrow(() -> new RuntimeException("Admin profile not found"));

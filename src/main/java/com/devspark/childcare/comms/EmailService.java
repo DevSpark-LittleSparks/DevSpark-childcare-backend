@@ -44,7 +44,7 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("Admin notification sent for {} ({})", name, role);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send admin notification", e);
         }
     }
@@ -102,7 +102,7 @@ public class EmailService {
                     "            </div>" +
                     "            <div class='content'>" +
                     "                <h1 class='title'>ACCOUNT APPROVED! </h1>" +
-                    "                <p class='greeting'>Hello Spark Parent,</p>" +
+                    "                <p class='greeting'>Hello Spark Member,</p>" +
                     "                <p class='text'>Your signup request has been reviewed and <span class='highlight'>approved</span> by our admin team. Use the OTP below to complete your registration and activate your account.</p>"
                     +
                     "                " +
@@ -139,7 +139,7 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("OTP Email sent successfully to {}", to);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send HTML OTP email", e);
             throw new RuntimeException("Email sending failed");
         }
