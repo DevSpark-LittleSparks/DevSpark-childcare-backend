@@ -1,5 +1,6 @@
 package com.devspark.childcare.payment;
 
+import com.devspark.childcare.auth.Parent;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

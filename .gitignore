@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+application-local.properties
+
+### Local config (DO NOT COMMIT) ###
+src/main/resources/application-local.properties
+src/main/resources/application-dev.properties
+src/main/resources/firebase-service-account.json
+*.json
