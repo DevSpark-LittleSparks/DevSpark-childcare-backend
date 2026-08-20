@@ -8,8 +8,8 @@
 		<version>4.0.6</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.example</groupId>
-	<artifactId>Little-sparks-payment</artifactId>
+	<groupId>com.devspark</groupId>
+	<artifactId>childcare</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
