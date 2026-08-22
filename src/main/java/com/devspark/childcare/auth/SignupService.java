@@ -598,6 +598,31 @@ public class SignupService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<com.devspark.childcare.comms.dto.AlertRecipientDto> getAlertRecipients() {
+        List<com.devspark.childcare.comms.dto.AlertRecipientDto> recipients = new java.util.ArrayList<>();
+
+        parentRepository.findAll().stream()
+                .filter(p -> p.getAccount() != null)
+                .forEach(p -> recipients.add(com.devspark.childcare.comms.dto.AlertRecipientDto.builder()
+                        .accountId(p.getAccount().getAccountId())
+                        .name(p.getFullName())
+                        .email(p.getAccount().getEmail())
+                        .role("PARENT")
+                        .build()));
+
+        teacherRepository.findAll().stream()
+                .filter(t -> t.getAccount() != null)
+                .forEach(t -> recipients.add(com.devspark.childcare.comms.dto.AlertRecipientDto.builder()
+                        .accountId(t.getAccount().getAccountId())
+                        .name(t.getFullName())
+                        .email(t.getAccount().getEmail())
+                        .role("TEACHER")
+                        .build()));
+
+        return recipients;
+    }
+
     // ─── Forgot Password ──────────────────────────────────────────────────
 
     public void processForgotPassword(String email) {
@@ -698,6 +723,7 @@ public class SignupService {
 
         String fullName = "User";
         String profilePic = null;
+        UUID parentId = null;
 
         if (account.getRole() == Account.Role.ADMIN) {
             Admin admin = adminRepository.findByAccountEmail(email).orElse(null);
@@ -716,6 +742,7 @@ public class SignupService {
             if (parent != null) {
                 fullName = parent.getFullName();
                 profilePic = parent.getProfilePicture();
+                parentId = parent.getParentId();
             }
         }
 
@@ -724,6 +751,8 @@ public class SignupService {
                 .email(email)
                 .role(account.getRole().name())
                 .profilePic(profilePic)
+                .accountId(account.getAccountId())
+                .parentId(parentId)
                 .build();
     }
 }

@@ -5,7 +5,6 @@ import com.devspark.childcare.shared.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -65,12 +64,6 @@ public class GlobalExceptionHandler {
         return ApiResponse.error("An unexpected error occurred. " + ex.getMessage());
     }
 
-    @ExceptionHandler(com.devspark.childcare.payment.ResourceNotFoundException.class)
-    public ResponseEntity<com.devspark.childcare.payment.dto.response.ApiResponse<Void>> handleResourceNotFound(com.devspark.childcare.payment.ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(com.devspark.childcare.payment.dto.response.ApiResponse.error(ex.getMessage()));
-    }
-
     @ExceptionHandler(PaymentAlreadyPaidException.class)
     public ResponseEntity<com.devspark.childcare.payment.dto.response.ApiResponse<Void>> handleAlreadyPaid(PaymentAlreadyPaidException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -82,20 +75,5 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(com.devspark.childcare.payment.dto.response.ApiResponse.error(ex.getMessage()));
     }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<com.devspark.childcare.payment.dto.response.ApiResponse<Map<String, String>>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(com.devspark.childcare.payment.dto.response.ApiResponse.<Map<String, String>>builder()
-                        .success(false)
-                        .message("Validation failed")
-                        .data(errors)
-                        .build());
-    }
-
 
 }

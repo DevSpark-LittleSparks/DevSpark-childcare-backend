@@ -2,6 +2,7 @@ package com.devspark.childcare.comms;
 
 import com.devspark.childcare.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,10 +37,10 @@ public class NotificationController {
 
         UUID userUuid = account.getAccountId();
         NotificationTarget.TargetType userRoleType = NotificationTarget.TargetType.valueOf(role.toUpperCase());
-        
-        // 1. Fetch targets
-        List<NotificationTarget> allTargets = notificationTargetRepository.findByTargetRefId(userUuid);
-        
+
+        // Individual alerts addressed directly to this account.
+        List<NotificationTarget> individualTargets = notificationTargetRepository.findByTargetRefId(userUuid);
+
         List<Notification> alerts;
         if (account.getRole() == com.devspark.childcare.auth.Account.Role.ADMIN) {
             // Admins see all SYSTEM and ADMIN_REQUEST notifications
@@ -47,13 +48,22 @@ public class NotificationController {
                     .filter(n -> n.getType() == Notification.Type.SYSTEM || n.getType() == Notification.Type.ADMIN_REQUEST)
                     .collect(java.util.stream.Collectors.toList());
         } else {
-            // Others see broadcasts + targeted notifications
-            List<Notification> globalBroadcasts = notificationRepository.findByType(Notification.Type.BROADCAST);
-            alerts = allTargets.stream()
+            // Group broadcasts aimed at this role (or everyone) - matched via
+            // NotificationTarget, not by scanning every BROADCAST notification,
+            // so a "Parent Meetings" alert to ALL_STAFF never reaches parents.
+            List<NotificationTarget> groupTargets = new java.util.ArrayList<>(
+                    notificationTargetRepository.findByTargetTypeAndTargetRefIdIsNull(userRoleType));
+            if (userRoleType != NotificationTarget.TargetType.ALL) {
+                groupTargets.addAll(
+                        notificationTargetRepository.findByTargetTypeAndTargetRefIdIsNull(NotificationTarget.TargetType.ALL));
+            }
+
+            alerts = java.util.stream.Stream.concat(groupTargets.stream(), individualTargets.stream())
                     .map(target -> notificationRepository.findById(target.getNotificationId()).orElse(null))
                     .filter(java.util.Objects::nonNull)
+                    .filter(n -> n.getType() == Notification.Type.BROADCAST)
+                    .distinct()
                     .collect(java.util.stream.Collectors.toList());
-            alerts.addAll(globalBroadcasts);
         }
 
         List<com.devspark.childcare.comms.dto.NotificationResponseDto> response = alerts.stream()
@@ -74,6 +84,49 @@ public class NotificationController {
                 .collect(Collectors.toList());
 
         return ApiResponse.success("Alerts fetched successfully", response);
+    }
+
+    @GetMapping("/sent")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<com.devspark.childcare.comms.dto.SentAlertResponseDto>> getSentAlerts() {
+        List<Notification> broadcasts = notificationRepository.findByType(Notification.Type.BROADCAST);
+
+        List<com.devspark.childcare.comms.dto.SentAlertResponseDto> response = broadcasts.stream()
+                .map(notif -> {
+                    NotificationTarget target = notificationTargetRepository
+                            .findByNotificationId(notif.getNotificationId())
+                            .stream().findFirst().orElse(null);
+
+                    String targetLabel;
+                    if (target == null) {
+                        targetLabel = "Unknown";
+                    } else if (target.getTargetRefId() != null) {
+                        targetLabel = accountRepository.findById(target.getTargetRefId())
+                                .map(com.devspark.childcare.auth.Account::getEmail)
+                                .orElse("Unknown recipient");
+                    } else {
+                        targetLabel = switch (target.getTargetType()) {
+                            case PARENT -> "All Parents";
+                            case TEACHER -> "All Staff";
+                            case ALL -> "Everyone";
+                        };
+                    }
+
+                    return com.devspark.childcare.comms.dto.SentAlertResponseDto.builder()
+                            .id(notif.getNotificationId().toString())
+                            .title(notif.getTitle())
+                            .body(notif.getBody())
+                            .priority(notif.getPriority())
+                            .targetLabel(targetLabel)
+                            .createdAt(notif.getCreatedAt())
+                            .build();
+                })
+                .sorted(java.util.Comparator.comparing(
+                        com.devspark.childcare.comms.dto.SentAlertResponseDto::getCreatedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .collect(Collectors.toList());
+
+        return ApiResponse.success("Sent alerts fetched", response);
     }
 
     @PutMapping("/{id}/read")

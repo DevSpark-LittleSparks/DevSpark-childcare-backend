@@ -11,16 +11,14 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CardDetailsRequestDTO {
+public class PaymentConfirmRequestDTO {
 
     @NotNull(message = "Parent ID is required")
     private UUID parentId;
 
-    @NotBlank(message = "Card holder name is required")
-    private String cardHolderName;
+    @NotNull(message = "Payment ID is required")
+    private UUID paymentId;
 
-    // Stripe.js tokenizes the raw card client-side and hands back this id -
-    // the actual card number never reaches this backend.
-    @NotBlank(message = "Stripe payment method ID is required")
-    private String stripePaymentMethodId;
+    @NotBlank(message = "Stripe PaymentIntent ID is required")
+    private String paymentIntentId;
 }

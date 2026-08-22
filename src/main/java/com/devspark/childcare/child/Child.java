@@ -62,10 +62,4 @@ public class Child extends AuditableEntity {
     public enum Gender {
         MALE, FEMALE, OTHER
     }
-
-    public enum ChildStatus {
-        ENROLLED,
-        BIG_SCHOOL_READY,
-        ALUMNI
-    }
 }

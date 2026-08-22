@@ -2,6 +2,8 @@ package com.devspark.childcare.auth.dto;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -11,4 +13,6 @@ public class UserProfileResponseDto {
     private String email;
     private String role;
     private String profilePic;
+    private UUID accountId;
+    private UUID parentId; // only set when role is PARENT
 }

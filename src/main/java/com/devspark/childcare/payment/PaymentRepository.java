@@ -17,4 +17,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Optional<Payment> findByParent_ParentIdAndBillingMonth(UUID parentId, String billingMonth);
 
     boolean existsByParent_ParentIdAndBillingMonth(UUID parentId, String billingMonth);
+
+    List<Payment> findByStatus(Payment.PaymentStatus status);
 }
