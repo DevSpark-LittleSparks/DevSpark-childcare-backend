@@ -37,9 +37,9 @@ public class ChildService {
     @Value("${child.age.max:10}")
     private int maxAge;
 
-    public List<ChildResponseDto> getAllChildren() {
-        return childRepository.findAll().stream()
-                .map(child -> {
+    public org.springframework.data.domain.Page<ChildResponseDto> getAllChildren(int page, int size) {
+        org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(page, size);
+        return childRepository.findAll(pageRequest).map(child -> {
                     Parent parent = child.getParentId() != null ? parentRepository.findById(child.getParentId()).orElse(null) : null;
                     String guardianName = parent != null ? parent.getFullName() : "Unknown";
                     String guardianEmail = (parent != null && parent.getAccount() != null) 
@@ -64,8 +64,7 @@ public class ChildService {
                             .guardianEmail(guardianEmail)
                             .status(child.getStatus() != null ? child.getStatus().name() : null)
                             .build();
-                })
-                .collect(Collectors.toList());
+        });
     }
 
     @Transactional
