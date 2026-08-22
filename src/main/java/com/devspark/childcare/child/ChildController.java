@@ -23,6 +23,7 @@ public class ChildController {
     }
 
     @PostMapping("/register")
+    @org.springframework.cache.annotation.CacheEvict(value = "dashboardStats", allEntries = true)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<String> registerChild(@RequestBody ChildRegistrationDto dto) {
         childService.registerChild(dto);
