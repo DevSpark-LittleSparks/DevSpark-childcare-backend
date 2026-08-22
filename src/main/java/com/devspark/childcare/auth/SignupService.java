@@ -559,13 +559,15 @@ public class SignupService {
                         .status(t.getAccount() != null && t.getAccount().getStatus() != null
                                 ? t.getAccount().getStatus().name()
                                 : "UNKNOWN")
-                        .phoneNumber("N/A") // Add field if exists in Teacher
-                        .address("N/A") // Add field if exists in Teacher
+                        .phoneNumber(t.getPhone())
+                        .address(t.getAddress())
+                        .profilePicture(t.getProfilePicture())
                         .createdAt(t.getCreatedAt())
                         .build())
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "dashboardStats")
     public com.devspark.childcare.auth.dto.AdminStatsDto getAdminStats() {
         // Calculate dashboard summary
         return com.devspark.childcare.auth.dto.AdminStatsDto.builder()
