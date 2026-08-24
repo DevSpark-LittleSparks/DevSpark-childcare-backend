@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     Optional<Teacher> findByAccountEmail(String email);
     Optional<Teacher> findByAccountAccountId(UUID accountId);
+
+    java.util.List<Teacher> findAllByDesignationAndCreatedAtBefore(Teacher.Designation designation, java.time.LocalDateTime dateTime);
 }

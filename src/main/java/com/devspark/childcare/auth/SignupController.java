@@ -76,6 +76,7 @@ public class SignupController {
 
     // Final step: User enters the OTP code received via email to activate their account
     @PostMapping("/verify-otp")
+    @org.springframework.cache.annotation.CacheEvict(value = "dashboardStats", allEntries = true)
     public ApiResponse<String> verifyOtp(@RequestBody OtpVerificationDto dto) {
         signupService.verifyOtpAndCompleteSignup(dto.getEmail(), dto.getOtp());
         return ApiResponse.success("Signup successful! You can now login.", null);
