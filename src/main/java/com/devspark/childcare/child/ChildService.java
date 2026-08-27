@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 
 import java.time.Period;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,9 +31,15 @@ public class ChildService {
     private final ParentRepository parentRepository;
     private final AccountRepository accountRepository;
 
-    public List<ChildResponseDto> getAllChildren() {
-        return childRepository.findAll().stream()
-                .map(child -> {
+    @Value("${child.age.min:3}")
+    private int minAge;
+
+    @Value("${child.age.max:10}")
+    private int maxAge;
+
+    public org.springframework.data.domain.Page<ChildResponseDto> getAllChildren(int page, int size) {
+        org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(page, size);
+        return childRepository.findAll(pageRequest).map(child -> {
                     Parent parent = child.getParentId() != null ? parentRepository.findById(child.getParentId()).orElse(null) : null;
                     String guardianName = parent != null ? parent.getFullName() : "Unknown";
                     String guardianEmail = (parent != null && parent.getAccount() != null) 
@@ -56,8 +64,7 @@ public class ChildService {
                             .guardianEmail(guardianEmail)
                             .status(child.getStatus() != null ? child.getStatus().name() : null)
                             .build();
-                })
-                .collect(Collectors.toList());
+        });
     }
 
     @Transactional
@@ -66,8 +73,8 @@ public class ChildService {
 
         LocalDate dob = LocalDate.parse(dto.getDob());
         int age = Period.between(dob, LocalDate.now()).getYears();
-        if (age < 3 || age > 10) {
-            throw new RuntimeException("Child must be between 3 and 10 years old to be enrolled.");
+        if (age < minAge || age > maxAge) {
+            throw new RuntimeException("Child must be between " + minAge + " and " + maxAge + " years old to be enrolled.");
         }
 
         // 1. Handle Parent Account
@@ -101,14 +108,18 @@ public class ChildService {
                 });
 
         // 2.5 Check for duplicates
-        if (childRepository.existsByFirstNameAndLastNameAndDobAndParentId(dto.getFullName(), "", dob, parent.getParentId())) {
+        String[] nameParts = dto.getFullName().trim().split("\\s+", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+        if (childRepository.existsByFirstNameAndLastNameAndDobAndParentId(firstName, lastName, dob, parent.getParentId())) {
             throw new RuntimeException("A child with the same name and date of birth is already registered for this parent.");
         }
 
         // 3. Create Child
         Child child = Child.builder()
-                .firstName(dto.getFullName()) // Frontend uses fullName for student first name in simple mode
-                .lastName("") // Frontend doesn't split it currently
+                .firstName(firstName) // Extracted from fullName
+                .lastName(lastName)
                 .dob(LocalDate.parse(dto.getDob()))
                 .gender(Child.Gender.valueOf(dto.getGender().toUpperCase()))
                 .bloodGroup(dto.getBloodGroup())
@@ -161,11 +172,15 @@ public class ChildService {
         child.setFirstName(dto.getFirstName());
         child.setLastName(dto.getLastName());
         child.setDob(dto.getDob());
-        child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
+        
+        if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
+            child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
+        }
+        
         child.setBloodGroup(dto.getBloodGroup());
         child.setProfilePic(dto.getProfilePic());
         
-        if (dto.getStatus() != null) {
+        if (dto.getStatus() != null && !dto.getStatus().trim().isEmpty()) {
             child.setStatus(ChildStatus.valueOf(dto.getStatus().toUpperCase()));
         }
 

@@ -21,5 +21,6 @@ public class TeacherResponseDto {
     private String status;
     private String phoneNumber;
     private String address;
+    private String profilePicture;
     private LocalDateTime createdAt;
 }

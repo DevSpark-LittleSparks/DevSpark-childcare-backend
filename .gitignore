@@ -42,4 +42,7 @@ application-local.properties
 src/main/resources/application-local.properties
 src/main/resources/application-dev.properties
 src/main/resources/firebase-service-account.json
-*.json
+*.jsonerror_log.txt
+startup_log.txt
+error_log.txt
+startup_log.txt

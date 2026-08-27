@@ -45,4 +45,25 @@ public class TeacherService {
         
         teacherRepository.save(teacher);
     }
+
+    @Transactional
+    public void updateTeacherFromAdmin(java.util.UUID teacherId, com.devspark.childcare.staff.dto.TeacherResponseDto dto) {
+        Teacher teacher = teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher profile not found"));
+
+        teacher.setFullName(dto.getFirstName() + " " + dto.getLastName());
+        if (dto.getProfilePicture() != null) {
+            teacher.setProfilePicture(dto.getProfilePicture());
+        }
+        teacher.setPhone(dto.getPhoneNumber());
+        teacher.setAddress(dto.getAddress());
+        if (dto.getRole() != null) {
+            try {
+                teacher.setDesignation(Teacher.Designation.valueOf(dto.getRole().toUpperCase()));
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+        teacherRepository.save(teacher);
+    }
 }
