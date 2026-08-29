@@ -8,15 +8,16 @@ import com.devspark.childcare.child.dto.ChildRegistrationDto;
 import com.devspark.childcare.child.dto.ChildResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import java.time.Period;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,16 +28,21 @@ public class ChildService {
     private final ParentRepository parentRepository;
     private final AccountRepository accountRepository;
 
-    // FIX: Added @Transactional(readOnly = true) to keep the Hibernate session open.
-    // This prevents the "LazyInitializationException - no session" error when accessing parent.getAccount().
+    @Value("${child.age.min:3}")
+    private int minAge;
+
+    @Value("${child.age.max:10}")
+    private int maxAge;
+
     @Transactional(readOnly = true)
-    public List<ChildResponseDto> getAllChildren() {
-        return childRepository.findAll().stream()
+    public Page<ChildResponseDto> getAllChildren(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        
+        return childRepository.findAll(pageRequest)
                 .map(child -> {
                     Parent parent = child.getParentId() != null ? parentRepository.findById(child.getParentId()).orElse(null) : null;
                     String guardianName = parent != null ? parent.getFullName() : "Unknown";
 
-                    // The session is now kept open, so calling getAccount() is 100% safe here!
                     String guardianEmail = (parent != null && parent.getAccount() != null)
                             ? parent.getAccount().getEmail() : "Unknown";
 
@@ -44,7 +50,7 @@ public class ChildService {
                             .childId(child.getChildId())
                             .firstName(child.getFirstName())
                             .lastName(child.getLastName())
-                            .dob(child.getDob())
+                            .dob(child.getDob() != null ? child.getDob().toString() : null)
                             .gender(child.getGender() != null ? child.getGender().name() : null)
                             .bloodGroup(child.getBloodGroup())
                             .profilePic(child.getProfilePic())
@@ -59,19 +65,18 @@ public class ChildService {
                             .guardianEmail(guardianEmail)
                             .status(child.getStatus() != null ? child.getStatus().name() : null)
                             .build();
-                })
-                .collect(Collectors.toList());
+                });
     }
 
-    // Unchanged: Anjana's original logic is safely preserved
     @Transactional
     public void registerChild(ChildRegistrationDto dto) {
         log.info("Registering new child: {} for parent: {}", dto.getFullName(), dto.getParentEmail());
 
         LocalDate dob = LocalDate.parse(dto.getDob());
         int age = Period.between(dob, LocalDate.now()).getYears();
-        if (age < 3 || age > 10) {
-            throw new RuntimeException("Child must be between 3 and 10 years old to be enrolled.");
+        
+        if (age < minAge || age > maxAge) {
+            throw new RuntimeException("Child must be between " + minAge + " and " + maxAge + " years old to be enrolled.");
         }
 
         Account account = accountRepository.findByEmail(dto.getParentEmail())
@@ -123,7 +128,6 @@ public class ChildService {
         log.info("Child {} successfully registered with ID: {}", child.getFirstName(), child.getChildId());
     }
 
-    // Unchanged: Anjana's original logic is safely preserved
     @Transactional(readOnly = true)
     public ChildResponseDto getChildById(UUID childId) {
         Child child = childRepository.findById(childId)
@@ -138,7 +142,7 @@ public class ChildService {
                 .childId(child.getChildId())
                 .firstName(child.getFirstName())
                 .lastName(child.getLastName())
-                .dob(child.getDob())
+                .dob(child.getDob() != null ? child.getDob().toString() : null)
                 .gender(child.getGender() != null ? child.getGender().name() : null)
                 .bloodGroup(child.getBloodGroup())
                 .profilePic(child.getProfilePic())
@@ -155,7 +159,6 @@ public class ChildService {
                 .build();
     }
 
-    // Unchanged: Anjana's original logic is safely preserved
     @Transactional
     public void updateChild(UUID childId, ChildResponseDto dto) {
         Child child = childRepository.findById(childId)
@@ -163,15 +166,14 @@ public class ChildService {
 
         child.setFirstName(dto.getFirstName());
         child.setLastName(dto.getLastName());
-        child.setDob(dto.getDob());
-        child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
+        if (dto.getDob() != null) {
+            child.setDob(LocalDate.parse(dto.getDob()));
+        }
+        if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
+            child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
+        }
         child.setBloodGroup(dto.getBloodGroup());
         child.setProfilePic(dto.getProfilePic());
-
-        if (dto.getStatus() != null) {
-            // Assuming ChildStatus is an enum in the Child entity scope
-            // child.setStatus(ChildStatus.valueOf(dto.getStatus().toUpperCase()));
-        }
 
         childRepository.save(child);
         log.info("Child {} updated successfully", childId);
