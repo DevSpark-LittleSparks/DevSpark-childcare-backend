@@ -474,8 +474,13 @@ public class SignupService {
                         .role("PARENT")
                         .status(r.getStatus().name())
                         .submittedAt(r.getCreatedAt())
-                        .extraInfo("Child: " + r.getChildFirstName()
-                                + " | Relationship: " + r.getRelationship().name())
+                        .extraInfo("Child: " + r.getChildFirstName() + " | Rel: " + r.getRelationship().name())
+                        .additionalDetails(java.util.Map.of(
+                                "Child Name", r.getChildFirstName() != null ? r.getChildFirstName() : "N/A",
+                                "Child DOB", r.getChildDob() != null ? r.getChildDob().toString() : "N/A",
+                                "Parent NIC", r.getNic() != null ? r.getNic() : "N/A",
+                                "Relationship", r.getRelationship() != null ? r.getRelationship().name() : "N/A"
+                        ))
                         .build())
                 .toList();
     }
@@ -586,6 +591,7 @@ public class SignupService {
                         .phone(p.getPhone())
                         .nic(p.getNic())
                         .relationship(p.getRelationship() != null ? p.getRelationship().name() : null)
+                        .profilePic(p.getProfilePicture())
                         .status(p.getAccount() != null && p.getAccount().getStatus() != null
                                 ? p.getAccount().getStatus().name()
                                 : "UNKNOWN")
