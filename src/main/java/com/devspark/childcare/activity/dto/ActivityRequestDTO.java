@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size;
 
 /**
  * DTO for receiving Activity creation/update requests from the Frontend.
- * Uses Jakarta Validation to ensure data integrity.
  */
 public record ActivityRequestDTO(
 
