@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/signup/**").permitAll()
                         .requestMatchers("/api/v1/auth/verify-otp").permitAll()
+                        .requestMatchers("/api/v1/public/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll() //new
                         .anyRequest().authenticated()
@@ -43,10 +44,10 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
+        configuration.setAllowedOriginPatterns(java.util.List.of("http://localhost:*"));
+        configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(java.util.List.of("*"));
 
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:5173", "http://localhost:5174"));
-        configuration.setAllowedMethods(java.util.List.of("*")); // වෙනස: ඔක්කොම Methods වලට ඉඩ දෙන්න
-        configuration.setAllowedHeaders(java.util.List.of("*")); // වෙනස: ඔක්කොම Headers වලට ඉඩ දෙන්න
         configuration.setAllowCredentials(true);
 
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
