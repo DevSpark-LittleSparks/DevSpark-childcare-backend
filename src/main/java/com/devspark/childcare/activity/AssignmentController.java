@@ -40,9 +40,33 @@ public class AssignmentController {
         return ApiResponse.success("Assignment published successfully", response);
     }
 
+    // 👇 Edit Assignment Endpoint (අලුතින් එකතු කළා)
+    @PutMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<AssignmentResponseDTO> updateAssignment(@PathVariable("id") UUID id, @Valid @RequestBody AssignmentRequestDTO request) {
+        AssignmentResponseDTO response = assignmentService.updateAssignment(id, request);
+        return ApiResponse.success("Assignment updated successfully", response);
+    }
+
     @GetMapping("/teacher/{teacherId}")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<List<AssignmentResponseDTO>> getTeacherDashboard(@PathVariable("teacherId") UUID teacherId) {
         return ApiResponse.success("Teacher dashboard data fetched successfully", assignmentService.getTeacherDashboard(teacherId));
+    }
+
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<AssignmentResponseDTO>> getAssignments(
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) UUID teacherId) {
+        List<AssignmentResponseDTO> assignments = assignmentService.getAllAssignments(date, teacherId);
+        return ApiResponse.success("Assignments fetched successfully", assignments);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ApiResponse<Void> deleteAssignment(@PathVariable("id") UUID id) {
+        assignmentService.deleteAssignment(id);
+        return ApiResponse.success("Assignment deleted successfully", null);
     }
 }

@@ -135,9 +135,14 @@ public class SignupService {
             // Status remains INACTIVE until OTP verification
             accountRepository.save(existingAccount);
 
-            // Notify admin
-            String fullName = request.getFirstName() + " " + request.getLastName();
-            emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+            // Notify admin - wrap in try-catch so signup doesn't fail if email server is
+            // slow
+            try {
+                String fullName = request.getFirstName() + " " + request.getLastName();
+                emailService.notifyAdminNewRequest(fullName, request.getEmail(), "parent");
+            } catch (Exception emailEx) {
+                log.error("Silent failure: Could not send admin notification email for parent signup", emailEx);
+            }
 
         } catch (Exception e) {
             log.error("Error creating Firebase user for parent: ", e);
@@ -351,7 +356,7 @@ public class SignupService {
             Teacher teacher = Teacher.builder()
                     .account(account)
                     .fullName(request.getFullName())
-                    .designation(Teacher.Designation.valueOf(request.getDesignation().name()))
+                    .designation(Teacher.Designation.JUNIOR)
                     .phone(request.getPhone())
                     .address(request.getAddress())
                     .maxDailyActivities(2) // Default
@@ -469,8 +474,13 @@ public class SignupService {
                         .role("PARENT")
                         .status(r.getStatus().name())
                         .submittedAt(r.getCreatedAt())
-                        .extraInfo("Child: " + r.getChildFirstName()
-                                + " | Relationship: " + r.getRelationship().name())
+                        .extraInfo("Child: " + r.getChildFirstName() + " | Rel: " + r.getRelationship().name())
+                        .additionalDetails(java.util.Map.of(
+                                "Child Name", r.getChildFirstName() != null ? r.getChildFirstName() : "N/A",
+                                "Child DOB", r.getChildDob() != null ? r.getChildDob().toString() : "N/A",
+                                "Parent NIC", r.getNic() != null ? r.getNic() : "N/A",
+                                "Relationship", r.getRelationship() != null ? r.getRelationship().name() : "N/A"
+                        ))
                         .build())
                 .toList();
     }
@@ -540,9 +550,10 @@ public class SignupService {
         }
     }
 
-    public List<com.devspark.childcare.staff.dto.TeacherResponseDto> getAllTeachers() {
-        return teacherRepository.findAll().stream()
-                .map(t -> com.devspark.childcare.staff.dto.TeacherResponseDto.builder()
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.devspark.childcare.staff.dto.TeacherResponseDto> getAllTeachers(int page, int size) {
+        org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(page, size);
+        return teacherRepository.findAll(pageRequest).map(t -> com.devspark.childcare.staff.dto.TeacherResponseDto.builder()
                         .teacherId(t.getTeacherId())
                         .firstName(t.getFullName() != null ? t.getFullName().split(" ")[0] : "Unknown")
                         .lastName(t.getFullName() != null && t.getFullName().contains(" ")
@@ -553,13 +564,14 @@ public class SignupService {
                         .status(t.getAccount() != null && t.getAccount().getStatus() != null
                                 ? t.getAccount().getStatus().name()
                                 : "UNKNOWN")
-                        .phoneNumber("N/A") // Add field if exists in Teacher
-                        .address("N/A") // Add field if exists in Teacher
+                        .phoneNumber(t.getPhone())
+                        .address(t.getAddress())
+                        .profilePicture(t.getProfilePicture())
                         .createdAt(t.getCreatedAt())
-                        .build())
-                .collect(java.util.stream.Collectors.toList());
+                        .build());
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "dashboardStats")
     public com.devspark.childcare.auth.dto.AdminStatsDto getAdminStats() {
         // Calculate dashboard summary
         return com.devspark.childcare.auth.dto.AdminStatsDto.builder()
@@ -569,15 +581,17 @@ public class SignupService {
                 .build();
     }
 
-    public List<com.devspark.childcare.auth.dto.ParentResponseDto> getAllParents() {
-        return parentRepository.findAll().stream()
-                .map(p -> com.devspark.childcare.auth.dto.ParentResponseDto.builder()
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.devspark.childcare.auth.dto.ParentResponseDto> getAllParents(int page, int size) {
+        org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(page, size);
+        return parentRepository.findAll(pageRequest).map(p -> com.devspark.childcare.auth.dto.ParentResponseDto.builder()
                         .parentId(p.getParentId())
                         .fullName(p.getFullName())
                         .email(p.getAccount() != null ? p.getAccount().getEmail() : "Unknown")
                         .phone(p.getPhone())
                         .nic(p.getNic())
                         .relationship(p.getRelationship() != null ? p.getRelationship().name() : null)
+                        .profilePic(p.getProfilePicture())
                         .status(p.getAccount() != null && p.getAccount().getStatus() != null
                                 ? p.getAccount().getStatus().name()
                                 : "UNKNOWN")
@@ -587,8 +601,7 @@ public class SignupService {
                                         ? p.getAccount().getStatus().name()
                                         : "UNKNOWN")
                                 .build())
-                        .build())
-                .collect(java.util.stream.Collectors.toList());
+                        .build());
     }
 
     // ─── Forgot Password ──────────────────────────────────────────────────
@@ -625,6 +638,7 @@ public class SignupService {
         }
     }
 
+    @Transactional(readOnly = true)
     public com.devspark.childcare.auth.dto.AdminProfileResponseDto getAdminProfile(String email) {
         Admin admin = adminRepository.findByAccountEmail(email)
                 .orElseThrow(() -> new RuntimeException("Admin profile not found"));

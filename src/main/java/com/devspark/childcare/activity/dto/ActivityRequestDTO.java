@@ -1,11 +1,12 @@
 package com.devspark.childcare.activity.dto;
 
+import com.devspark.childcare.activity.enums.ActivityCategory;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
  * DTO for receiving Activity creation/update requests from the Frontend.
- * Uses Jakarta Validation to ensure data integrity before it reaches the Service layer.
  */
 public record ActivityRequestDTO(
 
@@ -13,9 +14,9 @@ public record ActivityRequestDTO(
         @Size(max = 150, message = "Activity name must not exceed 150 characters")
         String name,
 
-        @NotBlank(message = "Category is required")
-        @Size(max = 100, message = "Category must not exceed 100 characters")
-        String category,
+        // Changed from String to ActivityCategory and added @NotNull
+        @NotNull(message = "Category is required")
+        ActivityCategory category,
 
         String description,
 

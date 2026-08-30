@@ -43,9 +43,11 @@ public class AdminController {
 
     @GetMapping("/all-parents")
     @PreAuthorize("hasRole('ADMIN')")
-    public com.devspark.childcare.shared.response.ApiResponse<java.util.List<?>> getAllParents() {
+    public com.devspark.childcare.shared.response.ApiResponse<org.springframework.data.domain.Page<com.devspark.childcare.auth.dto.ParentResponseDto>> getAllParents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         return com.devspark.childcare.shared.response.ApiResponse.success("Parents fetched successfully",
-                signupService.getAllParents());
+                signupService.getAllParents(page, size));
     }
 
     @DeleteMapping("/parent/{id}")
@@ -80,14 +82,18 @@ public class AdminController {
     // 5. Get All Teachers
     @GetMapping("/all-teachers")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<?>> getAllTeachers() {
-        return ApiResponse.success("Teachers fetched successfully", signupService.getAllTeachers());
+    public ApiResponse<org.springframework.data.domain.Page<com.devspark.childcare.staff.dto.TeacherResponseDto>> getAllTeachers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.success("Teachers fetched successfully", signupService.getAllTeachers(page, size));
     }
 
     @GetMapping("/all-children")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<com.devspark.childcare.child.dto.ChildResponseDto>> getAllChildren() {
-        return ApiResponse.success("Children fetched successfully", childService.getAllChildren());
+    public ApiResponse<org.springframework.data.domain.Page<com.devspark.childcare.child.dto.ChildResponseDto>> getAllChildren(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.success("Children fetched successfully", childService.getAllChildren(page, size));
     }
 
     @GetMapping("/stats")

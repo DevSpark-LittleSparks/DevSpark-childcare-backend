@@ -5,10 +5,14 @@ import com.devspark.childcare.activity.dto.ActivityResponseDTO;
 import com.devspark.childcare.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/activities")
@@ -24,9 +28,30 @@ public class ActivityController {
         return ApiResponse.success("Activity created successfully", response);
     }
 
+    // 👇 Edit Master Activity Endpoint
+    @PutMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<ActivityResponseDTO> updateActivity(@PathVariable("id") UUID id, @Valid @RequestBody ActivityRequestDTO request) {
+        ActivityResponseDTO response = activityService.updateActivity(id, request);
+        return ApiResponse.success("Activity updated successfully", response);
+    }
+
+    // 👇 Delete Master Activity Endpoint
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ApiResponse<Void> deleteActivity(@PathVariable("id") UUID id) {
+        activityService.deleteActivity(id);
+        return ApiResponse.success("Activity deleted successfully", null);
+    }
+
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<List<ActivityResponseDTO>> getAllActivities() {
-        return ApiResponse.success("Activities fetched successfully", activityService.getAllActivities());
+    public ApiResponse<Page<ActivityResponseDTO>> getAllActivities(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        List<ActivityResponseDTO> list = activityService.getAllActivities();
+        Page<ActivityResponseDTO> pagedResult = new PageImpl<>(list, PageRequest.of(page, size), list.size());
+        return ApiResponse.success("Activities fetched successfully", pagedResult);
     }
 }

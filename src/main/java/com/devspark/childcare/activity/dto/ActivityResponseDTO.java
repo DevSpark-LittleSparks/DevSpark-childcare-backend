@@ -1,15 +1,14 @@
 package com.devspark.childcare.activity.dto;
 
+import com.devspark.childcare.activity.enums.ActivityCategory;
 import java.util.UUID;
 
 /**
- * DTO for sending Activity data back to the Frontend.
- * We never expose the raw Database Entity to the client (README Rule).
  */
 public record ActivityResponseDTO(
         UUID id,
         String name,
-        String category,
+        ActivityCategory category, // මෙතන String තිබුණ එක ActivityCategory කළා
         String description,
         String materialsNeeded
 ) {}

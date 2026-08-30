@@ -11,5 +11,11 @@ public interface AssignmentService {
     AssignmentResponseDTO assignActivityToTeacher(AssignmentRequestDTO request);
     void logProgress(BatchLogRequestDTO request);
     AssignmentResponseDTO publishAssignment(UUID assignmentId);
+
+
+    AssignmentResponseDTO updateAssignment(UUID assignmentId, AssignmentRequestDTO request);
+
     List<AssignmentResponseDTO> getTeacherDashboard(UUID teacherId);
+    List<AssignmentResponseDTO> getAllAssignments(String date, UUID teacherId);
+    void deleteAssignment(UUID assignmentId);
 }

@@ -11,4 +11,5 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     Optional<Account> findByEmail(String email);
     Optional<Account> findByFirebaseUid(String firebaseUid);
     boolean existsByEmail(String email);
+    java.util.List<Account> findByRole(Account.Role role);
 }
