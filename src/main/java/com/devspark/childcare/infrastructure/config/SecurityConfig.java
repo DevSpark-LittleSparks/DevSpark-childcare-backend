@@ -31,6 +31,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/verify-otp").permitAll()
                         .requestMatchers("/api/v1/public/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/error").permitAll() //new
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -46,7 +47,9 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(java.util.List.of("http://localhost:*"));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
+
         configuration.setAllowCredentials(true);
+
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
