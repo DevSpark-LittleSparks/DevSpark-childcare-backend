@@ -174,45 +174,25 @@ public class ChildService {
         }
         child.setBloodGroup(dto.getBloodGroup());
         child.setProfilePic(dto.getProfilePic());
-    @Transactional
-    public void updateChild(UUID childId, ChildResponseDto dto) {
-        Child child = childRepository.findById(childId)
-                .orElseThrow(() -> new RuntimeException("Child not found"));
 
-        child.setFirstName(dto.getFirstName());
-        child.setLastName(dto.getLastName());
-        if (dto.getDob() != null) {
-            child.setDob(LocalDate.parse(dto.getDob()));
-        }
-        if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
-            child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
-        }
-        child.setBloodGroup(dto.getBloodGroup());
-        child.setProfilePic(dto.getProfilePic());
-        
         // Medical & Physical Data
         if (dto.getHeight() != null) {
             child.setHeight(java.math.BigDecimal.valueOf(dto.getHeight()));
         } else {
             child.setHeight(null);
         }
-        
+
         if (dto.getWeight() != null) {
             child.setWeight(java.math.BigDecimal.valueOf(dto.getWeight()));
         } else {
             child.setWeight(null);
         }
-        
+
         child.setSpecialNote(dto.getSpecialNote());
-        
+
         if (dto.getStatus() != null && !dto.getStatus().trim().isEmpty()) {
             child.setStatus(ChildStatus.valueOf(dto.getStatus().toUpperCase()));
         }
-
-        childRepository.save(child);
-        log.info("Child {} updated successfully", childId);
-    }
-
 
         childRepository.save(child);
         log.info("Child {} updated successfully", childId);
