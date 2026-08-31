@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
-// Architecture Rule: Always map extra fields needed by UI into DTOs[cite: 3]
 public record AssignmentResponseDTO(
         UUID id,
         UUID teacherId,
