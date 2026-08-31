@@ -24,7 +24,7 @@ public class ChildController {
     // This enforces Strict Type Safety, which is a core standard in Senior Development.
     @GetMapping("/all")
     public ApiResponse<List<ChildResponseDto>> getAllChildren() {
-        return ApiResponse.success("Children fetched successfully", childService.getAllChildren());
+        return ApiResponse.success("Children fetched successfully", childService.getAllChildren(0, 1000).getContent());
     }
 
     // Unchanged: Anjana's original logic is safely preserved

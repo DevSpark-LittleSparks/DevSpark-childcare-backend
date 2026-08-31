@@ -50,7 +50,7 @@ public class ChildService {
                             .childId(child.getChildId())
                             .firstName(child.getFirstName())
                             .lastName(child.getLastName())
-                            .dob(child.getDob() != null ? child.getDob().toString() : null)
+                            .dob(child.getDob())
                             .gender(child.getGender() != null ? child.getGender().name() : null)
                             .bloodGroup(child.getBloodGroup())
                             .profilePic(child.getProfilePic())
@@ -142,7 +142,7 @@ public class ChildService {
                 .childId(child.getChildId())
                 .firstName(child.getFirstName())
                 .lastName(child.getLastName())
-                .dob(child.getDob() != null ? child.getDob().toString() : null)
+                .dob(child.getDob())
                 .gender(child.getGender() != null ? child.getGender().name() : null)
                 .bloodGroup(child.getBloodGroup())
                 .profilePic(child.getProfilePic())
@@ -167,7 +167,7 @@ public class ChildService {
         child.setFirstName(dto.getFirstName());
         child.setLastName(dto.getLastName());
         if (dto.getDob() != null) {
-            child.setDob(LocalDate.parse(dto.getDob()));
+            child.setDob(dto.getDob());
         }
         if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
             child.setGender(Child.Gender.valueOf(dto.getGender().toUpperCase()));
