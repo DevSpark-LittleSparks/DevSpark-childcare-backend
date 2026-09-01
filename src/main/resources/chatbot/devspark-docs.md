@@ -1,6 +1,6 @@
-# DevSpark (LittleSparks) — Childcare Management System
+# LittleSparks — Childcare Management System
 
-DevSpark is a web app used by a childcare center to manage children, staff, attendance,
+LittleSparks is a web app used by a childcare center to manage children, staff, attendance,
 activities, meals, learning progress, and communication between the center and parents.
 There are three roles: PARENT, TEACHER, and ADMIN. Each role has its own portal and only
 sees pages relevant to that role.
@@ -49,7 +49,23 @@ activities.
 
 Admins have center-wide visibility across all children, teachers, and parents.
 
-- **Dashboard** (`/admin/dashboard`) — overall center summary.
+- **Dashboard** (`/admin/dashboard`) — overall center summary: total students, staff on
+  duty, registered/verified counts, and any pending Management Requests.
+- **Admissions** (`/admin/admissions`) — register a new child: fill in the child's basic
+  info, medical details, and the parent's Guardian Email (the parent then signs up using
+  that exact email and waits for Admin approval).
+- **Students** (`/admin/students`) — the full list of enrolled children; open one to see
+  its individual profile page.
+- **Parents** (`/admin/parents`) — parent account management, including approving or
+  rejecting pending parent registration requests.
+- **Teachers** (`/admin/teachers`) — teacher account management, including approving or
+  rejecting pending teacher registration requests.
+- **Broadcast Center** (`/admin/broadcast`) — compose an announcement (title, message,
+  priority) and send it as a real-time notification to everyone, or only to Parents, or
+  only to Teachers.
+- **Activity Management / Schedules** (`/admin/activities`, `/admin/schedules`) — create
+  new activities under a category (Educational, Physical, or Art) and assign them to a
+  specific teacher, date, and time; new assignments stay as Drafts until Published.
 - **Learning Progress** (`/admin/learning`) — center-wide view for a specific date:
   - Daily Progress chart: how many children scored at each of the 4 grading levels
     across the whole center that day.
@@ -57,11 +73,25 @@ Admins have center-wide visibility across all children, teachers, and parents.
     children participated.
   - Per-child report section: pick any child and a date range to see the same
     Activity Engagement and Attendance charts available on the parent side.
-- Admins can manage teacher and parent accounts, and review registration/teacher
-  requests.
 
 Only an Admin can see data across multiple children/teachers at once; Teachers and
 Parents only ever see their own scoped data.
+
+## Notifications & Settings (all roles)
+
+- **Notifications** — a bell icon in the dashboard header (Parent, Teacher, and Admin
+  portals all have one) shows alerts: Admin broadcasts, and anything targeted directly
+  at that user. Clicking one marks it as read.
+- **Contact the admin** — from your Profile page, submit a request describing your issue;
+  it lands directly in the Admin's request list for review.
+- **Settings** — opened from the account/avatar menu in the header (any portal): change
+  your theme (light/dark), language, currency, and timezone preferences.
+
+## Login & account access
+
+- **Forgot / reset password** — On the Login page, click "Forgot Password?" and enter
+  your registered email. This works whether or not you're currently logged in, so a
+  user who is locked out can always ask about it without needing to log in first.
 
 ## General notes
 
