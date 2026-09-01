@@ -9,4 +9,5 @@ import java.util.UUID;
 @Repository
 public interface NotificationTargetRepository extends JpaRepository<NotificationTarget, UUID> {
     List<NotificationTarget> findByTargetRefId(UUID targetRefId);
+    List<NotificationTarget> findByTargetTypeAndTargetRefIdIsNull(NotificationTarget.TargetType targetType);
 }

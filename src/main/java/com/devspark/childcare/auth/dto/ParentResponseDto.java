@@ -19,6 +19,7 @@ public class ParentResponseDto {
     private String nic;
     private String relationship;
     private String status;
+    private String profilePic;
     private AccountDto account;
 
     @Data

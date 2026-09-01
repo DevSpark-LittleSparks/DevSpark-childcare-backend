@@ -18,6 +18,7 @@ public class SignupController {
 
     private final SignupService signupService;
 
+    // Endpoint for Teachers to request access
     @PostMapping("/teacher/request")
     public ApiResponse<String> submitTeacherRequest(@RequestBody TeacherSignupRequestDto dto) {
         String designationStr = dto.getDesignation() != null ? dto.getDesignation().toUpperCase() : "JUNIOR";
@@ -35,6 +36,7 @@ public class SignupController {
         return ApiResponse.success("Teacher signup request submitted. Awaiting admin approval.", null);
     }
 
+    // Endpoint for Parents to request access (requires pre-registered email)
     @PostMapping("/parent/request")
     public ApiResponse<String> submitParentRequest(@RequestBody ParentSignupRequestDto dto) {
         ParentRegistrationRequest request = ParentRegistrationRequest.builder()
@@ -72,7 +74,9 @@ public class SignupController {
         return ApiResponse.success("Director signup request submitted. Awaiting admin approval.", null);
     }
 
+    // Final step: User enters the OTP code received via email to activate their account
     @PostMapping("/verify-otp")
+    @org.springframework.cache.annotation.CacheEvict(value = "dashboardStats", allEntries = true)
     public ApiResponse<String> verifyOtp(@RequestBody OtpVerificationDto dto) {
         signupService.verifyOtpAndCompleteSignup(dto.getEmail(), dto.getOtp());
         return ApiResponse.success("Signup successful! You can now login.", null);
