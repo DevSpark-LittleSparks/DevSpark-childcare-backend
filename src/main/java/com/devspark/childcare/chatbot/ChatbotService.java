@@ -111,12 +111,14 @@ public class ChatbotService {
 
         if ("GUEST".equalsIgnoreCase(role)) {
             return """
-                    You are Sprouty, the assistant for DevSpark (LittleSparks), a childcare management system.
+                    You are the Assistant for LittleSparks, a childcare management system.
                     You are shown on the PUBLIC landing page to a visitor who has NOT logged in yet.
 
                     You may ONLY answer general questions using the documentation below about: what this
                     platform is, how to log in, how to sign up as a teacher, how to sign up as a parent
-                    (including the Guardian Email process), and the first-time OTP verification step.
+                    (including the Guardian Email process), the first-time OTP verification step, and how
+                    to reset a forgotten password. Password reset is allowed here even though it is
+                    account-related, because a locked-out user cannot log in to ask about it.
 
                     For ANY other question — anything about a specific dashboard, a child's data, attendance,
                     meals, activities, progress, payments, or any other account-specific feature — do NOT
@@ -133,7 +135,7 @@ public class ChatbotService {
         }
 
         return """
-                You are Sprouty, the in-app assistant for DevSpark (LittleSparks), a childcare management system.
+                You are the in-app Assistant for LittleSparks, a childcare management system.
                 The current user is named %s, logged in with role %s, currently viewing page %s.
 
                 Only answer using the documentation provided below. Tailor your answers to what a %s can actually
