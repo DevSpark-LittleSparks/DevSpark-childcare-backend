@@ -1,2 +1,0 @@
-ALTER TABLE activity_progress_log
-    MODIFY COLUMN grading_level ENUM('NEEDS_HELP', 'EXCELLENT', 'PENDING', 'ABSENT', 'AVERAGE', 'GOOD') NOT NULL;
