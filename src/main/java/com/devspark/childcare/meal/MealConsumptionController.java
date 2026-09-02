@@ -36,4 +36,17 @@ public class MealConsumptionController {
         List<ConsumptionLogResponse> logs = service.getLogsForDate(date);
         return ApiResponse.<List<ConsumptionLogResponse>>success("Logs fetched successfully", logs);
     }
+
+    // ========================================================================
+    // අලුතින් එකතු කළ කොටස: අද දවසට කෑම සඳහා ළමයි ලබා ගන්නා Endpoint එක
+    // ========================================================================
+    @GetMapping("/students")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'STAFF', 'ROLE_STAFF', 'TEACHER', 'ROLE_TEACHER')")
+    public ApiResponse<List<Object>> getStudentsForMeals(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        // මෙහි Object ලෙස යොදා ඇත්තේ ඔයාගේ Child DTO එක වෙනත් මොඩියුලයක ඇති බැවිනි.
+        List<Object> students = service.getPresentStudentsForMeals(date);
+        return ApiResponse.<List<Object>>success("Students for meals fetched successfully", students);
+    }
 }
