@@ -1,13 +1,10 @@
 package com.devspark.childcare.auth;
 
-import com.devspark.childcare.payment.CardDetails;
-import com.devspark.childcare.payment.Payment;
 import com.devspark.childcare.shared.audit.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -47,12 +44,6 @@ public class Parent extends AuditableEntity {
 
     @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
-
-    @OneToMany(mappedBy = "parent")
-    private List<Payment> paymentList;
-
-    @OneToMany(mappedBy = "parent")
-    private List<CardDetails> cardList;
 
     public enum Relationship {
         MOTHER, FATHER, GUARDIAN

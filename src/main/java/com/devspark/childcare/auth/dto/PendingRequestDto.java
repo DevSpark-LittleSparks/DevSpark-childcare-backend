@@ -15,5 +15,6 @@ public class PendingRequestDto {
     private String role;
     private String status;
     private LocalDateTime submittedAt;
-    private String extraInfo;
+    private String extraInfo; // Kept for backwards compatibility if needed
+    private java.util.Map<String, String> additionalDetails;
 }
