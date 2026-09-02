@@ -20,6 +20,7 @@ public class ParentResponseDto {
     private String relationship;
     private String status;
     private String profilePic;
+    private Boolean billingPaid;
     private AccountDto account;
 
     @Data
