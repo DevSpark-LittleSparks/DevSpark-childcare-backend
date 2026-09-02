@@ -62,15 +62,21 @@ public class ParentProgressService {
                 "WHERE HEX(apl.child_id) = ? AND taa.assigned_date BETWEEN ? AND ? AND apl.deleted = false",
                 hex, from, to);
 
+        // Teachers grade using the EXCELLENT/GOOD/AVERAGE/NEEDS_HELP scale today;
+        // LEVEL_1-4 is the older scale kept only for historical rows (see
+        // V35__Update_progress_level_enum.sql). Both scales share the same
+        // 1 (weakest) - 4 (best) meaning, so each new label is folded into the
+        // matching legacy tier rather than being counted separately.
         Map<String, Object> gradeRow = jdbc.queryForMap(
                 "SELECT COUNT(*) AS total, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_1' THEN 1 ELSE 0 END), 0) AS l1_cnt, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_2' THEN 1 ELSE 0 END), 0) AS l2_cnt, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_3' THEN 1 ELSE 0 END), 0) AS l3_cnt, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_4' THEN 1 ELSE 0 END), 0) AS l4_cnt " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_1', 'NEEDS_HELP') THEN 1 ELSE 0 END), 0) AS l1_cnt, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_2', 'AVERAGE')    THEN 1 ELSE 0 END), 0) AS l2_cnt, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_3', 'GOOD')       THEN 1 ELSE 0 END), 0) AS l3_cnt, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_4', 'EXCELLENT')  THEN 1 ELSE 0 END), 0) AS l4_cnt " +
                 "FROM activity_progress_log apl " +
                 "JOIN teacher_activity_assignment taa ON HEX(apl.assignment_id) = HEX(taa.assignment_id) AND taa.deleted = false " +
-                "WHERE HEX(apl.child_id) = ? AND taa.assigned_date BETWEEN ? AND ? AND apl.deleted = false",
+                "WHERE HEX(apl.child_id) = ? AND taa.assigned_date BETWEEN ? AND ? AND apl.deleted = false " +
+                "AND apl.grading_level NOT IN ('PENDING', 'ABSENT')",
                 hex, from, to);
 
         long gradeTotal = ((Number) gradeRow.get("total")).longValue();
@@ -100,16 +106,26 @@ public class ParentProgressService {
                 "FROM meal_consumption_log WHERE HEX(child_id) = ? AND date BETWEEN ? AND ? AND deleted = false",
                 hex, from, to);
 
-        long mealTotal = ((Number) mealRow.get("total")).longValue();
-        int fullPct    = mealTotal == 0 ? 0 : (int) Math.round(((Number) mealRow.get("full_cnt")).longValue()    * 100.0 / mealTotal);
-        int partialPct = mealTotal == 0 ? 0 : (int) Math.round(((Number) mealRow.get("partial_cnt")).longValue() * 100.0 / mealTotal);
-        int nonePct    = mealTotal == 0 ? 0 : (int) Math.round(((Number) mealRow.get("none_cnt")).longValue()    * 100.0 / mealTotal);
+        long mealTotal   = ((Number) mealRow.get("total")).longValue();
+        long fullCnt     = ((Number) mealRow.get("full_cnt")).longValue();
+        long partialCnt  = ((Number) mealRow.get("partial_cnt")).longValue();
+        long noneCnt     = ((Number) mealRow.get("none_cnt")).longValue();
 
+        int fullPct    = mealTotal == 0 ? 0 : (int) Math.round(fullCnt    * 100.0 / mealTotal);
+        int partialPct = mealTotal == 0 ? 0 : (int) Math.round(partialCnt * 100.0 / mealTotal);
+        int nonePct    = mealTotal == 0 ? 0 : (int) Math.round(noneCnt    * 100.0 / mealTotal);
+
+        // Weighted average instead of a majority-threshold word: FULL_MEAL=2,
+        // PARTIAL=1, ATE_NONE=0, normalized to a percentage of the max score.
+        // A threshold pick (e.g. "> 75% full = Full") hides real gaps — 80%
+        // full + 20% skipped entirely used to still read as "Full".
         String mealsLabel;
-        if (mealTotal == 0)     mealsLabel = null;
-        else if (fullPct > 75)  mealsLabel = "Full";
-        else if (nonePct > 75)  mealsLabel = "None";
-        else                    mealsLabel = "Partial";
+        if (mealTotal == 0) {
+            mealsLabel = null;
+        } else {
+            double avgMeal = (fullCnt * 2 + partialCnt * 1 + noneCnt * 0) / (double) mealTotal;
+            mealsLabel = Math.round((avgMeal / 2.0) * 100) + "%";
+        }
 
         return ProgressStatsResponseDto.builder()
                 .daysPresent(daysPresent)
@@ -170,13 +186,22 @@ public class ParentProgressService {
                 "SELECT COUNT(*) FROM attendance WHERE HEX(child_id) = ? AND date BETWEEN ? AND ? " +
                 "AND status = 'ABSENT' AND deleted = false",
                 hex, from, to);
+        int halfDay = count(
+                "SELECT COUNT(*) FROM attendance WHERE HEX(child_id) = ? AND date BETWEEN ? AND ? " +
+                "AND status = 'HALF_DAY' AND deleted = false",
+                hex, from, to);
 
-        int total = present + absent;
-        double rate = total == 0 ? 0.0 : (present * 100.0) / total;
+        // HALF_DAY was previously left out of both the numerator and denominator,
+        // so a child with several half-days but zero ABSENT records showed as
+        // 100% present. It now counts as half credit, same weighting the meals
+        // card uses for PARTIAL.
+        int total = present + absent + halfDay;
+        double rate = total == 0 ? 0.0 : ((present + halfDay * 0.5) * 100.0) / total;
 
         return AttendanceStatsResponseDto.builder()
                 .presentDays(present)
                 .absentDays(absent)
+                .halfDays(halfDay)
                 .attendanceRate(rate)
                 .build();
     }

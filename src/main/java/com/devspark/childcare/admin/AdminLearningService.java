@@ -33,15 +33,21 @@ public class AdminLearningService {
     private static final DateTimeFormatter DAY_LABEL = DateTimeFormatter.ofPattern("MMM d");
 
     public List<DailyProgressEntryDto> getDailyProgress(LocalDate date) {
+        // Teachers grade using the EXCELLENT/GOOD/AVERAGE/NEEDS_HELP scale today;
+        // LEVEL_1-4 is the older scale kept only for historical rows (see
+        // V35__Update_progress_level_enum.sql). Both scales share the same
+        // 1 (weakest) - 4 (best) meaning, so each new label is folded into the
+        // matching legacy tier rather than being counted separately.
         Map<String, Object> row = jdbc.queryForMap(
                 "SELECT " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_4' THEN 1 ELSE 0 END), 0) AS excellent, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_3' THEN 1 ELSE 0 END), 0) AS very_good, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_2' THEN 1 ELSE 0 END), 0) AS good, " +
-                "  COALESCE(SUM(CASE WHEN apl.grading_level = 'LEVEL_1' THEN 1 ELSE 0 END), 0) AS weak " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_4', 'EXCELLENT') THEN 1 ELSE 0 END), 0) AS excellent, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_3', 'GOOD')      THEN 1 ELSE 0 END), 0) AS very_good, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_2', 'AVERAGE')   THEN 1 ELSE 0 END), 0) AS good, " +
+                "  COALESCE(SUM(CASE WHEN apl.grading_level IN ('LEVEL_1', 'NEEDS_HELP') THEN 1 ELSE 0 END), 0) AS weak " +
                 "FROM activity_progress_log apl " +
                 "JOIN teacher_activity_assignment taa ON HEX(apl.assignment_id) = HEX(taa.assignment_id) AND taa.deleted = false " +
-                "WHERE taa.assigned_date = ? AND apl.deleted = false",
+                "WHERE taa.assigned_date = ? AND apl.deleted = false " +
+                "AND apl.grading_level NOT IN ('PENDING', 'ABSENT')",
                 date);
 
         int excellent = ((Number) row.get("excellent")).intValue();
@@ -148,13 +154,22 @@ public class AdminLearningService {
                 "SELECT COUNT(*) FROM attendance WHERE HEX(child_id) = ? AND date BETWEEN ? AND ? " +
                 "AND status = 'ABSENT' AND deleted = false",
                 hex, from, to);
+        int halfDay = count(
+                "SELECT COUNT(*) FROM attendance WHERE HEX(child_id) = ? AND date BETWEEN ? AND ? " +
+                "AND status = 'HALF_DAY' AND deleted = false",
+                hex, from, to);
 
-        int total = present + absent;
-        double rate = total == 0 ? 0.0 : (present * 100.0) / total;
+        // See ParentProgressService.getAttendance for why HALF_DAY needs its own
+        // bucket: left out entirely, it silently vanished from both the count
+        // and the rate, so a child with only half-days and no ABSENT records
+        // showed as 100% present.
+        int total = present + absent + halfDay;
+        double rate = total == 0 ? 0.0 : ((present + halfDay * 0.5) * 100.0) / total;
 
         return AttendanceStatsResponseDto.builder()
                 .presentDays(present)
                 .absentDays(absent)
+                .halfDays(halfDay)
                 .attendanceRate(rate)
                 .build();
     }
