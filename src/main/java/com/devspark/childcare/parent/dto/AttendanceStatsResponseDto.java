@@ -9,5 +9,6 @@ import lombok.*;
 public class AttendanceStatsResponseDto {
     private int presentDays;
     private int absentDays;
+    private int halfDays;
     private double attendanceRate;
 }
