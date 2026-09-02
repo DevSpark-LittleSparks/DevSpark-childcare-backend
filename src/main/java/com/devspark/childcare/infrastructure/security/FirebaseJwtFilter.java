@@ -27,45 +27,40 @@ import java.util.List;
 public class FirebaseJwtFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
             throws ServletException, IOException {
 
-        final String authorizationHeader = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String idToken = authorizationHeader.substring(7);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String idToken = authHeader.substring(7);
+
             try {
-                // SPECIAL FEATURE: Firebase Token Verification
-                // JWT token from the frontend
                 FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
                 String email = decodedToken.getEmail();
 
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // SPECIAL FEATURE: Identity & Role Extraction
-                    // We extract the "role" custom claim that we set during registration.
                     String role = (String) decodedToken.getClaims().get("role");
-                    if (role == null)
-                        role = "USER";
-
-                    // Map the Firebase role to Spring Security's GrantedAuthority
-                    List<SimpleGrantedAuthority> authorities = Collections
-                            .singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-
-                    UserDetails userDetails = new User(email, "", authorities);
-
-                    // Create an authentication object and store it in the SecurityContext
-                    // This tells Spring Security that the user is authenticated and what they can
-                    // access.
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, authorities);
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    if (role == null) role = "USER";
+                    setAuthentication(request, email, role);
                 }
             } catch (Exception e) {
                 log.error("Firebase token verification failed: ", e);
             }
         }
+
         chain.doFilter(request, response);
+    }
+
+    private void setAuthentication(HttpServletRequest request, String email, String role) {
+        List<SimpleGrantedAuthority> authorities =
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
+        UserDetails userDetails = new User(email, "", authorities);
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

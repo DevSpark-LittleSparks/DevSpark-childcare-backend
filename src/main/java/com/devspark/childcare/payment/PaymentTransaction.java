@@ -26,6 +26,8 @@ public class PaymentTransaction {
 
     private String gatewayReference;
 
+    private LocalDateTime requestedAt;
+
 
 
 

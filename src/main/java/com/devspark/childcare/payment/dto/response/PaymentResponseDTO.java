@@ -18,6 +18,7 @@ public class PaymentResponseDTO {
 
     private UUID paymentId;
     private String billingMonth;
+    private String description;
     private Long amount;
     private Payment.PaymentStatus status;
     private UUID parentId;
@@ -28,4 +29,10 @@ public class PaymentResponseDTO {
     private LocalDateTime txnTime;
     private PaymentTransaction.TxnStatus txnStatus;
     private String gatewayReference;
+
+    // Set when Stripe requires additional customer action (3D Secure) before
+    // the payment can complete - the frontend uses clientSecret with
+    // stripe.confirmCardPayment(), then calls /confirm.
+    private boolean requiresAction;
+    private String clientSecret;
 }

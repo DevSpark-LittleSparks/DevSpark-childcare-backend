@@ -174,22 +174,22 @@ public class ChildService {
         }
         child.setBloodGroup(dto.getBloodGroup());
         child.setProfilePic(dto.getProfilePic());
-        
+
         // Medical & Physical Data
         if (dto.getHeight() != null) {
             child.setHeight(java.math.BigDecimal.valueOf(dto.getHeight()));
         } else {
             child.setHeight(null);
         }
-        
+
         if (dto.getWeight() != null) {
             child.setWeight(java.math.BigDecimal.valueOf(dto.getWeight()));
         } else {
             child.setWeight(null);
         }
-        
+
         child.setSpecialNote(dto.getSpecialNote());
-        
+
         if (dto.getStatus() != null && !dto.getStatus().trim().isEmpty()) {
             child.setStatus(ChildStatus.valueOf(dto.getStatus().toUpperCase()));
         }

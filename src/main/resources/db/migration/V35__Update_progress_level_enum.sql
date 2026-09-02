@@ -1,0 +1,2 @@
+ALTER TABLE activity_progress_log
+    MODIFY COLUMN grading_level ENUM('LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4', 'NEEDS_HELP', 'EXCELLENT', 'PENDING', 'ABSENT', 'AVERAGE', 'GOOD') NOT NULL;

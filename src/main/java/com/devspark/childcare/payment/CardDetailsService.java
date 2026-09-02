@@ -5,6 +5,8 @@ import com.devspark.childcare.auth.ParentRepository;
 import com.devspark.childcare.payment.dto.request.CardDetailsRequestDTO;
 import com.devspark.childcare.payment.dto.response.CardDetailsResponseDTO;
 import com.devspark.childcare.shared.exception.ResourceNotFoundException;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,15 +28,29 @@ public class CardDetailsService {
         Parent parent = parentRepository.findById(request.getParentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Parent not found: " + request.getParentId()));
 
-        CardDetails card = new CardDetails();
-        card.setCardHolderName(request.getCardHolderName());
-        card.setCardLast4(request.getCardNumber().substring(request.getCardNumber().length() - 4));
-        card.setCardType(request.getCardType());
-        card.setExpDate(parseExpiry(request.getExpiryDate()));
-        card.setParent(parent);
+        PaymentMethod paymentMethod;
+        try {
+            paymentMethod = PaymentMethod.retrieve(request.getStripePaymentMethodId());
+        } catch (StripeException e) {
+            throw new IllegalArgumentException("Invalid Stripe payment method: " + e.getMessage());
+        }
 
-        card = cardDetailsRepository.save(card);
-        return toResponseDTO(card);
+        PaymentMethod.Card card = paymentMethod.getCard();
+        if (card == null) {
+            throw new IllegalArgumentException("Payment method is not a card");
+        }
+
+        CardDetails details = new CardDetails();
+        details.setCardHolderName(request.getCardHolderName());
+        details.setCardLast4(card.getLast4());
+        details.setCardType(mapBrand(card.getBrand()));
+        details.setExpDate(LocalDateTime.of(card.getExpYear().intValue(), card.getExpMonth().intValue(), 1, 0, 0, 0));
+        details.setStripePaymentMethodId(paymentMethod.getId());
+        details.setPaidVia("STRIPE");
+        details.setParent(parent);
+
+        details = cardDetailsRepository.save(details);
+        return toResponseDTO(details);
     }
 
     public List<CardDetailsResponseDTO> getCardsByParent(UUID parentId) {
@@ -55,12 +71,15 @@ public class CardDetailsService {
         cardDetailsRepository.deleteById(cardId);
     }
 
-    // Parses "MM/YY" -> first day of that month
-    private LocalDateTime parseExpiry(String expiryDate) {
-        String[] parts = expiryDate.split("/");
-        int month = Integer.parseInt(parts[0]);
-        int year = 2000 + Integer.parseInt(parts[1]);
-        return LocalDateTime.of(year, month, 1, 0, 0, 0);
+    private CardDetails.CardType mapBrand(String stripeBrand) {
+        if (stripeBrand == null) return CardDetails.CardType.UNKNOWN;
+        return switch (stripeBrand.toLowerCase()) {
+            case "visa" -> CardDetails.CardType.VISA;
+            case "mastercard" -> CardDetails.CardType.MASTERCARD;
+            case "amex" -> CardDetails.CardType.AMEX;
+            case "discover" -> CardDetails.CardType.DISCOVER;
+            default -> CardDetails.CardType.UNKNOWN;
+        };
     }
 
     private CardDetailsResponseDTO toResponseDTO(CardDetails card) {

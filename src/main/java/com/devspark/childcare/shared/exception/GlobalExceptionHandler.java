@@ -1,8 +1,10 @@
 package com.devspark.childcare.shared.exception;
 
+import com.devspark.childcare.payment.PaymentAlreadyPaidException;
 import com.devspark.childcare.shared.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -61,4 +63,17 @@ public class GlobalExceptionHandler {
         } catch (Exception ignored) {}
         return ApiResponse.error("An unexpected error occurred. " + ex.getMessage());
     }
+
+    @ExceptionHandler(PaymentAlreadyPaidException.class)
+    public ResponseEntity<com.devspark.childcare.payment.dto.response.ApiResponse<Void>> handleAlreadyPaid(PaymentAlreadyPaidException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(com.devspark.childcare.payment.dto.response.ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<com.devspark.childcare.payment.dto.response.ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(com.devspark.childcare.payment.dto.response.ApiResponse.error(ex.getMessage()));
+    }
+
 }

@@ -1,0 +1,2 @@
+ALTER TABLE teacher_activity_assignment
+    MODIFY COLUMN status ENUM('PENDING', 'DRAFT', 'ASSIGNED', 'COMPLETED') NOT NULL DEFAULT 'DRAFT';

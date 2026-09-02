@@ -25,10 +25,17 @@ import java.util.UUID;
 
     private String cardLast4;
 
+    // Stripe's id for this tokenized payment method (pm_...) - the raw card
+    // number never reaches this backend, only Stripe.js on the frontend sees it.
+    @Column(unique = true)
+    private String stripePaymentMethodId;
+
     @Enumerated(EnumType.STRING)
     private CardType cardType;
 
     private LocalDateTime expDate;
+
+    private String paidVia;
 
     @ManyToOne
     @JoinColumn(name = "parent_id")
@@ -38,6 +45,9 @@ import java.util.UUID;
 
     public enum CardType{
         VISA,
-        MASTERCARD
+        MASTERCARD,
+        AMEX,
+        DISCOVER,
+        UNKNOWN
     }
 }
