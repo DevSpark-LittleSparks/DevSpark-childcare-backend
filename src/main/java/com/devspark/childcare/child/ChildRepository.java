@@ -12,4 +12,7 @@ public interface ChildRepository extends JpaRepository<Child, UUID> {
     List<Child> findByStatus(ChildStatus status);
     boolean existsByFirstNameAndLastNameAndDobAndParentId(String firstName, String lastName, java.time.LocalDate dob, UUID parentId);
     List<Child> findAllByStatusNotAndDobBefore(ChildStatus status, java.time.LocalDate dobCutoff);
+
+    @org.springframework.data.jpa.repository.Query("SELECT c FROM Child c WHERE MONTH(c.dob) = MONTH(CURRENT_DATE) ORDER BY DAY(c.dob)")
+    List<Child> findCurrentMonthBirthdays(org.springframework.data.domain.Pageable pageable);
 }

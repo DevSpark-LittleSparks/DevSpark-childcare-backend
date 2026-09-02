@@ -27,6 +27,11 @@ public class ChildController {
         return ApiResponse.success("Children fetched successfully", childService.getAllChildren(0, 1000).getContent());
     }
 
+    @GetMapping("/upcoming-birthdays")
+    public ApiResponse<List<ChildResponseDto>> getUpcomingBirthdays() {
+        return ApiResponse.success("Upcoming birthdays fetched successfully", childService.getUpcomingBirthdays(5));
+    }
+
     // Unchanged: Anjana's original logic is safely preserved
     @PostMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
