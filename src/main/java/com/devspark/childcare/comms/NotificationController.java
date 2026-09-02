@@ -64,7 +64,7 @@ public class NotificationController {
             alerts = java.util.stream.Stream.concat(groupTargets.stream(), individualTargets.stream())
                     .map(target -> notificationRepository.findById(target.getNotificationId()).orElse(null))
                     .filter(java.util.Objects::nonNull)
-                    .filter(n -> n.getType() == Notification.Type.BROADCAST)
+                    .filter(n -> n.getType() == Notification.Type.BROADCAST || n.getType() == Notification.Type.SYSTEM)
                     .distinct()
                     .collect(java.util.stream.Collectors.toList());
         }
@@ -186,10 +186,6 @@ public class NotificationController {
         notification = notificationRepository.save(notification);
 
         if (dto.getTargetType() == NotificationTarget.TargetType.PARENT || dto.getTargetType() == NotificationTarget.TargetType.TEACHER) {
-            // It's targeted, so convert type to SYSTEM, wait, type is BROADCAST, but we want it targeted
-            // Actually let's just make it SYSTEM if it's targeted, so global broadcast logic doesn't pick it up
-            notification.setType(Notification.Type.SYSTEM);
-            notificationRepository.save(notification);
 
             com.devspark.childcare.auth.Account.Role targetRole = 
                 dto.getTargetType() == NotificationTarget.TargetType.PARENT ? 

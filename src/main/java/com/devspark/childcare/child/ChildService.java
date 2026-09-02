@@ -66,6 +66,7 @@ public class ChildService {
                             .guardianName(guardianName)
                             .guardianEmail(guardianEmail)
                             .status(child.getStatus() != null ? child.getStatus().name() : null)
+                            .enrolledDate(child.getCreatedAt() != null ? child.getCreatedAt().toLocalDate().toString() : "Unknown")
                             .build();
                 });
     }
@@ -171,6 +172,7 @@ public class ChildService {
                 .guardianName(guardianName)
                 .guardianEmail(guardianEmail)
                 .status(child.getStatus() != null ? child.getStatus().name() : null)
+                .enrolledDate(child.getCreatedAt() != null ? child.getCreatedAt().toLocalDate().toString() : "Unknown")
                 .build();
     }
 

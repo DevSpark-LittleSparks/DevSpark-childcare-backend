@@ -101,6 +101,13 @@ public class AdminController {
         return ApiResponse.success("Teachers fetched successfully", signupService.getAllTeachers(page, size));
     }
 
+    @DeleteMapping("/teacher/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> deleteTeacher(@PathVariable String id) {
+        signupService.deleteTeacher(id);
+        return ApiResponse.success("Teacher deleted successfully", null);
+    }
+
     @GetMapping("/all-children")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<org.springframework.data.domain.Page<com.devspark.childcare.child.dto.ChildResponseDto>> getAllChildren(

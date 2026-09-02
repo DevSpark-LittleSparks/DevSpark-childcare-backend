@@ -31,4 +31,5 @@ public class ChildResponseDto {
     private String guardianName;
     private String guardianEmail;
     private String status;
+    private String enrolledDate;
 }
