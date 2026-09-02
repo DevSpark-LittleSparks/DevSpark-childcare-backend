@@ -1,8 +1,6 @@
 package com.devspark.childcare.payment.dto.request;
 
-import com.devspark.childcare.payment.CardDetails;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,22 +18,9 @@ public class PaymentRequestDTO {
     @NotNull(message = "Payment ID is required")
     private UUID paymentId;
 
-    // Use a saved card by ID, or provide card details below
+    // Card tokenization happens client-side via Stripe Elements - the card
+    // must already be saved (see CardDetailsController) before it can be
+    // charged, so this is always required.
+    @NotNull(message = "A saved payment method is required")
     private UUID savedCardId;
-
-    // New card details (required when savedCardId is null)
-    private String cardHolderName;
-
-    @Pattern(regexp = "^[0-9]{13,19}$", message = "Card number must be 13-19 digits")
-    private String cardNumber;
-
-    private CardDetails.CardType cardType;
-
-    @Pattern(regexp = "^(0[1-9]|1[0-2])/[0-9]{2}$", message = "Expiry must be MM/YY format")
-    private String expiryDate;
-
-    @Pattern(regexp = "^[0-9]{3,4}$", message = "CVV must be 3 or 4 digits")
-    private String cvv;
-
-    private boolean saveCard = false;
 }

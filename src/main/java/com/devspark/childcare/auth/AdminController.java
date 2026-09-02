@@ -24,6 +24,12 @@ public class AdminController {
         return ApiResponse.success("Announcement broadcasted successfully.", null);
     }
 
+    @GetMapping("/alert-recipients")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<com.devspark.childcare.comms.dto.AlertRecipientDto>> getAlertRecipients() {
+        return ApiResponse.success("Recipients fetched successfully", signupService.getAlertRecipients());
+    }
+
     // 3. Approve Teacher
     @PostMapping("/approve-teacher/{requestId}")
     @PreAuthorize("hasRole('ADMIN')")

@@ -21,6 +21,11 @@ public class Payment {
 
     private String billingMonth;
 
+    // What the charge is for - null for regular monthly billing (frontend
+    // falls back to a generated "<Month> <Year>" label), set for one-off
+    // additional charges (registration fee, facility fee, etc).
+    private String description;
+
     private Long amount;
 
     @Enumerated(EnumType.STRING)

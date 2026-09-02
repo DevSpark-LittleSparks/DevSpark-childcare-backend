@@ -32,12 +32,12 @@ public class AnnouncementService {
         NotificationTarget target = NotificationTarget.builder()
                 .notificationId(savedNotification.getNotificationId())
                 .targetType(dto.getTargetType())
-                .targetRefId(null) // NULL for broadcast to whole group
+                .targetRefId(dto.getTargetRefId()) // null = whole group, set = single recipient
                 .build();
 
         notificationTargetRepository.save(target);
 
-        // TODO: Integrate with WebSocket for real-time delivery
-        log.info("Broadcast successful for target: {}", dto.getTargetType());
+        log.info("Broadcast successful for target: {}{}", dto.getTargetType(),
+                dto.getTargetRefId() != null ? " (individual: " + dto.getTargetRefId() + ")" : " (group)");
     }
 }
