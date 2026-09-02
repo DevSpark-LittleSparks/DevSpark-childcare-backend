@@ -45,6 +45,10 @@ public class Parent extends AuditableEntity {
     @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
 
+    @Column(name = "billing_paid", nullable = false)
+    @Builder.Default
+    private Boolean billingPaid = false;
+
     public enum Relationship {
         MOTHER, FATHER, GUARDIAN
     }

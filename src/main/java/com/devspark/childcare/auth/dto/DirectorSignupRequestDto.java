@@ -10,7 +10,7 @@ public class DirectorSignupRequestDto {
     private String password;
     private String phone;
     private String address;
-    private String centerName;
+    private String designation;
     private String centerAddress;
-    private Integer capacity;
+    private String branchName;
 }

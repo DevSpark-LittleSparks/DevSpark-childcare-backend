@@ -65,9 +65,9 @@ public class SignupController {
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .address(dto.getAddress())
-                .centerName(dto.getCenterName())
+                .designation(dto.getDesignation())
                 .centerAddress(dto.getCenterAddress())
-                .capacity(dto.getCapacity())
+                .branchName(dto.getBranchName())
                 .build();
 
         signupService.submitDirectorRequest(request, dto.getPassword());

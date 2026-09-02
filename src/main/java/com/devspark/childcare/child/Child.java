@@ -32,6 +32,9 @@ public class Child extends AuditableEntity {
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
+    @Column(name = "name_with_initials", length = 150)
+    private String nameWithInitials;
+
     @Column(nullable = false)
     private LocalDate dob;
 

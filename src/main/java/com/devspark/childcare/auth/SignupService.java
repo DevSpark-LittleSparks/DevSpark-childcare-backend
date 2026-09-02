@@ -187,8 +187,8 @@ public class SignupService {
             Admin admin = new Admin();
             admin.setAccount(savedAccount);
             admin.setFullName(request.getFullName());
-            admin.setCenterName(request.getCenterName());
-            admin.setCapacity(request.getCapacity() != null ? String.valueOf(request.getCapacity()) : null);
+            admin.setDesignation(request.getDesignation());
+            admin.setBranchName(request.getBranchName());
             admin.setAddress(request.getCenterAddress() != null ? request.getCenterAddress() : request.getAddress());
             admin.setPhone1(request.getPhone());
             adminRepository.save(admin);
@@ -497,8 +497,8 @@ public class SignupService {
                         .role("DIRECTOR")
                         .status(r.getStatus().name())
                         .submittedAt(r.getCreatedAt())
-                        .extraInfo("Center: " + r.getCenterName()
-                                + " | Capacity: " + r.getCapacity())
+                        .extraInfo("Designation: " + r.getDesignation()
+                                + " | Branch: " + r.getBranchName())
                         .build())
                 .toList();
     }
@@ -595,6 +595,7 @@ public class SignupService {
                         .status(p.getAccount() != null && p.getAccount().getStatus() != null
                                 ? p.getAccount().getStatus().name()
                                 : "UNKNOWN")
+                        .billingPaid(p.getBillingPaid())
                         .account(com.devspark.childcare.auth.dto.ParentResponseDto.AccountDto.builder()
                                 .email(p.getAccount() != null ? p.getAccount().getEmail() : "Unknown")
                                 .status(p.getAccount() != null && p.getAccount().getStatus() != null
@@ -677,8 +678,8 @@ public class SignupService {
                 .phone1(admin.getPhone1())
                 .phone2(admin.getPhone2())
                 .address(admin.getAddress())
-                .centerName(admin.getCenterName())
-                .capacity(admin.getCapacity())
+                .designation(admin.getDesignation())
+                .branchName(admin.getBranchName())
                 .build();
     }
 
@@ -695,8 +696,8 @@ public class SignupService {
         admin.setPhone1(dto.getPhone1());
         admin.setPhone2(dto.getPhone2());
         admin.setAddress(dto.getAddress());
-        admin.setCenterName(dto.getCenterName());
-        admin.setCapacity(dto.getCapacity());
+        admin.setDesignation(dto.getDesignation());
+        admin.setBranchName(dto.getBranchName());
 
         adminRepository.save(admin);
     }
@@ -760,5 +761,13 @@ public class SignupService {
                 .accountId(account.getAccountId())
                 .parentId(parentId)
                 .build();
+    }
+
+    @Transactional
+    public void toggleParentBilling(String parentId) {
+        Parent parent = parentRepository.findById(UUID.fromString(parentId))
+                .orElseThrow(() -> new RuntimeException("Parent not found"));
+        parent.setBillingPaid(parent.getBillingPaid() == null || !parent.getBillingPaid());
+        parentRepository.save(parent);
     }
 }
