@@ -57,6 +57,13 @@ public class AdminController {
         return ApiResponse.success("Parent deleted successfully", null);
     }
 
+    @PutMapping("/parent/{id}/billing")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> toggleParentBilling(@PathVariable String id) {
+        signupService.toggleParentBilling(id);
+        return ApiResponse.success("Billing status updated", null);
+    }
+
     @DeleteMapping("/child/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<String> deleteChild(@PathVariable String id) {
