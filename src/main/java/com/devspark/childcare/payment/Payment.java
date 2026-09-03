@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -37,6 +39,12 @@ public class Payment {
 
     @OneToOne
     private PaymentTransaction transaction;
+
+    // When the charge was raised. billing_month is only month-granular, so
+    // this is what "Recent Invoices" can actually order by.
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
 
 

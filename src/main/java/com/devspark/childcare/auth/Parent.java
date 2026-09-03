@@ -45,6 +45,12 @@ public class Parent extends AuditableEntity {
     @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
     private String profilePicture;
 
+    // Stripe Customer owning this parent's saved cards. A PaymentMethod must
+    // be attached to a Customer to be charged more than once, so this is
+    // created on first card save and reused for every later charge.
+    @Column(name = "stripe_customer_id", length = 255)
+    private String stripeCustomerId;
+
     @Column(name = "billing_paid", nullable = false)
     @Builder.Default
     private Boolean billingPaid = false;

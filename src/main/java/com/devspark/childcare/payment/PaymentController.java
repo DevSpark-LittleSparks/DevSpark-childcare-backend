@@ -2,10 +2,13 @@ package com.devspark.childcare.payment;
 
 import com.devspark.childcare.payment.dto.request.AdditionalChargeRequestDTO;
 import com.devspark.childcare.payment.dto.request.GeneratePaymentsRequestDTO;
+import com.devspark.childcare.payment.dto.request.PayAllConfirmRequestDTO;
+import com.devspark.childcare.payment.dto.request.PayAllRequestDTO;
 import com.devspark.childcare.payment.dto.request.PaymentConfirmRequestDTO;
 import com.devspark.childcare.payment.dto.request.PaymentRequestDTO;
 import com.devspark.childcare.payment.dto.response.ApiResponse;
 import com.devspark.childcare.payment.dto.response.MonthlyRevenueDto;
+import com.devspark.childcare.payment.dto.response.PayAllResponseDTO;
 import com.devspark.childcare.payment.dto.response.PaymentResponseDTO;
 import com.devspark.childcare.payment.dto.response.PaymentStatusOverviewDto;
 import com.devspark.childcare.payment.dto.response.YearlyRevenueDto;
@@ -81,6 +84,24 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<PaymentResponseDTO>> confirmPayment(
             @Valid @RequestBody PaymentConfirmRequestDTO request) {
         PaymentResponseDTO result = paymentService.confirmPayment(request);
+        return ResponseEntity.ok(ApiResponse.success(result, "Payment confirmed"));
+    }
+
+    /** Parent: settle every outstanding invoice in one charge */
+    @PostMapping("/pay-all")
+    @PreAuthorize("hasRole('PARENT')")
+    public ResponseEntity<ApiResponse<PayAllResponseDTO>> payAllOutstanding(
+            Principal principal, @Valid @RequestBody PayAllRequestDTO request) {
+        PayAllResponseDTO result = paymentService.payAllOutstanding(principal.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success(result, "Outstanding balance paid"));
+    }
+
+    /** Parent: finalize a 3D-Secure-completed full-balance payment */
+    @PostMapping("/pay-all/confirm")
+    @PreAuthorize("hasRole('PARENT')")
+    public ResponseEntity<ApiResponse<PayAllResponseDTO>> confirmPayAll(
+            Principal principal, @Valid @RequestBody PayAllConfirmRequestDTO request) {
+        PayAllResponseDTO result = paymentService.confirmPayAll(principal.getName(), request);
         return ResponseEntity.ok(ApiResponse.success(result, "Payment confirmed"));
     }
 
