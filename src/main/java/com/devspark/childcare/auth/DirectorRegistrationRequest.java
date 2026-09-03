@@ -34,14 +34,14 @@ public class DirectorRegistrationRequest extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "center_name", length = 150)
-    private String centerName;
+    @Column(name = "designation")
+    private String designation;
+
+    @Column(name = "branch_name")
+    private String branchName;
 
     @Column(name = "center_address", columnDefinition = "TEXT")
     private String centerAddress;
-
-    @Column(name = "capacity")
-    private Integer capacity;
 
 
     @Builder.Default

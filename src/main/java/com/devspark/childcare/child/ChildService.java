@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -50,6 +51,7 @@ public class ChildService {
                             .childId(child.getChildId())
                             .firstName(child.getFirstName())
                             .lastName(child.getLastName())
+                            .nameWithInitials(child.getNameWithInitials())
                             .dob(child.getDob())
                             .gender(child.getGender() != null ? child.getGender().name() : null)
                             .bloodGroup(child.getBloodGroup())
@@ -66,6 +68,17 @@ public class ChildService {
                             .status(child.getStatus() != null ? child.getStatus().name() : null)
                             .build();
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChildResponseDto> getUpcomingBirthdays(int limit) {
+        return childRepository.findCurrentMonthBirthdays(org.springframework.data.domain.PageRequest.of(0, limit)).stream().map(child -> ChildResponseDto.builder()
+                .childId(child.getChildId())
+                .firstName(child.getFirstName())
+                .lastName(child.getLastName())
+                .dob(child.getDob())
+                .profilePic(child.getProfilePic())
+                .build()).toList();
     }
 
     @Transactional
@@ -114,6 +127,7 @@ public class ChildService {
         Child child = Child.builder()
                 .firstName(dto.getFullName())
                 .lastName("")
+                .nameWithInitials(dto.getNameWithInitials())
                 .dob(LocalDate.parse(dto.getDob()))
                 .gender(Child.Gender.valueOf(dto.getGender().toUpperCase()))
                 .bloodGroup(dto.getBloodGroup())
@@ -142,6 +156,7 @@ public class ChildService {
                 .childId(child.getChildId())
                 .firstName(child.getFirstName())
                 .lastName(child.getLastName())
+                .nameWithInitials(child.getNameWithInitials())
                 .dob(child.getDob())
                 .gender(child.getGender() != null ? child.getGender().name() : null)
                 .bloodGroup(child.getBloodGroup())
@@ -166,6 +181,9 @@ public class ChildService {
 
         child.setFirstName(dto.getFirstName());
         child.setLastName(dto.getLastName());
+        if (dto.getNameWithInitials() != null) {
+            child.setNameWithInitials(dto.getNameWithInitials());
+        }
         if (dto.getDob() != null) {
             child.setDob(dto.getDob());
         }

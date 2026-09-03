@@ -7,5 +7,6 @@ package com.devspark.childcare.activity.enums;
 public enum AssignmentStatus {
     DRAFT,      // Saved by Admin, but not visible to teacher yet
     ASSIGNED,   // Published by Admin, visible to teacher on their dashboard
-    COMPLETED   // Teacher has logged progress for all students
+    COMPLETED,   // Teacher has logged progress for all students
+    PENDING
 }

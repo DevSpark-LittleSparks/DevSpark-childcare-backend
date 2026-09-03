@@ -51,6 +51,10 @@ public class Parent extends AuditableEntity {
     @Column(name = "stripe_customer_id", length = 255)
     private String stripeCustomerId;
 
+    @Column(name = "billing_paid", nullable = false)
+    @Builder.Default
+    private Boolean billingPaid = false;
+
     public enum Relationship {
         MOTHER, FATHER, GUARDIAN
     }

@@ -16,6 +16,7 @@ public class ChildResponseDto {
     private UUID childId;
     private String firstName;
     private String lastName;
+    private String nameWithInitials;
     private LocalDate dob;
     private String gender;
     private String bloodGroup;

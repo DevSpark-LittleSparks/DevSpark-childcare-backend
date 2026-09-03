@@ -16,6 +16,6 @@ public class AdminProfileResponseDto {
     private String phone1;
     private String phone2;
     private String address;
-    private String centerName;
-    private String capacity;
+    private String designation;
+    private String branchName;
 }

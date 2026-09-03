@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 
 @Service
@@ -27,12 +28,15 @@ public class TeacherDashboardService {
     }
 
     public ClassStatusDto getClassStatus(String email) {
-        Teacher teacher = getTeacher(email);
+        // Center-wide, not scoped to this teacher's own recorded_by rows —
+        // "expected" is every child in the center, so "checkedIn" needs to match
+        // that scope or it understates attendance whenever another teacher did
+        // the actual check-in.
         int expected = jdbc.queryForObject(
             "SELECT COUNT(*) FROM child WHERE deleted = false", Integer.class);
         int checkedIn = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM attendance WHERE recorded_by = ? AND date = ? AND status = 'PRESENT' AND deleted = false",
-            Integer.class, teacher.getTeacherId(), LocalDate.now());
+            "SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'PRESENT' AND deleted = false",
+            Integer.class, LocalDate.now());
         int pct = expected > 0 ? (checkedIn * 100 / expected) : 0;
         return ClassStatusDto.builder()
                 .checkedIn(checkedIn).expected(expected)
@@ -88,6 +92,11 @@ public class TeacherDashboardService {
         Teacher teacher = getTeacher(email);
         String hex = teacher.getTeacherId().toString().replace("-", "").toUpperCase();
 
+        // Only date was filtered before, so an activity whose end_time had
+        // already passed today still showed up under "Upcoming".
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
         return jdbc.query(
             "SELECT TIME_FORMAT(taa.start_time,'%h:%i %p') AS start_fmt, " +
             "  TIME_FORMAT(taa.end_time,'%h:%i %p') AS end_fmt, " +
@@ -95,12 +104,13 @@ public class TeacherDashboardService {
             "FROM teacher_activity_assignment taa " +
             "JOIN activity a ON HEX(taa.activity_id) = HEX(a.activity_id) AND a.deleted = false " +
             "WHERE HEX(taa.teacher_id) = ? AND taa.assigned_date = ? AND taa.deleted = false " +
+            "  AND taa.end_time >= ? " +
             "ORDER BY taa.start_time ASC",
             (rs, i) -> UpcomingActivityDto.builder()
                     .startTime(rs.getString("start_fmt")).endTime(rs.getString("end_fmt"))
                     .name(rs.getString("activity_name")).description(rs.getString("description"))
                     .status(rs.getString("status")).build(),
-            hex, LocalDate.now());
+            hex, today, now);
     }
 
     public List<ActivityLogDto> getActivityLogs(String email, String sortBy) {

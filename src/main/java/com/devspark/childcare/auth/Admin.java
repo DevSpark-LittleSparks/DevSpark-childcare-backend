@@ -41,9 +41,9 @@ public class Admin extends AuditableEntity {
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "center_name", length = 150)
-    private String centerName;
+    @Column(name = "designation", length = 100)
+    private String designation;
 
-    @Column(name = "capacity", length = 50)
-    private String capacity;
+    @Column(name = "branch_name", length = 50)
+    private String branchName;
 }
