@@ -24,6 +24,11 @@ public class PaymentResponseDTO {
     private UUID parentId;
     private String parentName;
 
+    // When the charge was raised. Prefer this over deriving a date from
+    // billingMonth, which is month-granular and renders every invoice in a
+    // month as the 1st.
+    private LocalDateTime createdAt;
+
     // Transaction details (present only after payment is processed)
     private UUID txnId;
     private LocalDateTime txnTime;

@@ -3,9 +3,12 @@ package com.devspark.childcare.payment;
 import com.devspark.childcare.auth.Parent;
 import com.devspark.childcare.auth.ParentRepository;
 import com.devspark.childcare.payment.dto.request.AdditionalChargeRequestDTO;
+import com.devspark.childcare.payment.dto.request.PayAllConfirmRequestDTO;
+import com.devspark.childcare.payment.dto.request.PayAllRequestDTO;
 import com.devspark.childcare.payment.dto.request.PaymentConfirmRequestDTO;
 import com.devspark.childcare.payment.dto.request.PaymentRequestDTO;
 import com.devspark.childcare.payment.dto.response.MonthlyRevenueDto;
+import com.devspark.childcare.payment.dto.response.PayAllResponseDTO;
 import com.devspark.childcare.payment.dto.response.PaymentResponseDTO;
 import com.devspark.childcare.payment.dto.response.PaymentStatusOverviewDto;
 import com.devspark.childcare.payment.dto.response.YearlyRevenueDto;
@@ -37,7 +40,7 @@ public class PaymentService {
 
     public List<PaymentResponseDTO> getPaymentsByParent(UUID parentId) {
         ensureParentExists(parentId);
-        return paymentRepository.findByParent_ParentId(parentId)
+        return paymentRepository.findByParent_ParentIdOrderByCreatedAtDesc(parentId)
                 .stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
@@ -45,7 +48,8 @@ public class PaymentService {
 
     public List<PaymentResponseDTO> getPendingPayments(UUID parentId) {
         ensureParentExists(parentId);
-        return paymentRepository.findByParent_ParentIdAndStatus(parentId, Payment.PaymentStatus.NOT_PAYED)
+        return paymentRepository.findByParent_ParentIdAndStatusOrderByCreatedAtDesc(
+                        parentId, Payment.PaymentStatus.NOT_PAYED)
                 .stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
@@ -53,7 +57,8 @@ public class PaymentService {
 
     public List<PaymentResponseDTO> getPaymentHistory(UUID parentId) {
         ensureParentExists(parentId);
-        return paymentRepository.findByParent_ParentIdAndStatus(parentId, Payment.PaymentStatus.PAYED)
+        return paymentRepository.findByParent_ParentIdAndStatusOrderByCreatedAtDesc(
+                        parentId, Payment.PaymentStatus.PAYED)
                 .stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
@@ -202,9 +207,145 @@ public class PaymentService {
     }
 
     /**
+     * Settles every outstanding (NOT_PAYED) invoice for a parent in a single
+     * Stripe charge, rather than one charge - and one 3D Secure prompt - per
+     * invoice. Each covered invoice still gets its own PaymentTransaction row,
+     * all sharing the PaymentIntent id as gateway reference, so the set can be
+     * reconstructed server-side at confirm time.
+     */
+    @Transactional
+    public PayAllResponseDTO payAllOutstanding(String requesterEmail, PayAllRequestDTO request) {
+        ensureOwnership(requesterEmail, request.getParentId());
+
+        List<Payment> pending = paymentRepository.findByParent_ParentIdAndStatusOrderByCreatedAtDesc(
+                request.getParentId(), Payment.PaymentStatus.NOT_PAYED);
+        if (pending.isEmpty()) {
+            throw new IllegalArgumentException("There is no outstanding balance to pay");
+        }
+
+        CardDetails card = cardDetailsRepository.findById(request.getSavedCardId())
+                .orElseThrow(() -> new ResourceNotFoundException("Saved card not found: " + request.getSavedCardId()));
+        if (!card.getParent().getParentId().equals(request.getParentId())) {
+            throw new IllegalArgumentException("Card does not belong to this parent");
+        }
+
+        long total = pending.stream().mapToLong(Payment::getAmount).sum();
+        log.info("Charging full outstanding balance {} across {} invoice(s) for parent {}",
+                total, pending.size(), request.getParentId());
+
+        PaymentIntent intent;
+        try {
+            com.stripe.model.PaymentMethod paymentMethod =
+                    com.stripe.model.PaymentMethod.retrieve(card.getStripePaymentMethodId());
+
+            PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
+                    .setAmount(total * 100)
+                    .setCurrency("lkr")
+                    .setPaymentMethod(card.getStripePaymentMethodId())
+                    .addPaymentMethodType("card")
+                    .setConfirm(true)
+                    .setConfirmationMethod(PaymentIntentCreateParams.ConfirmationMethod.AUTOMATIC);
+
+            if (paymentMethod.getCustomer() != null) {
+                paramsBuilder.setCustomer(paymentMethod.getCustomer());
+            }
+
+            intent = PaymentIntent.create(paramsBuilder.build());
+        } catch (StripeException e) {
+            throw new IllegalArgumentException("Payment failed: " + e.getMessage());
+        }
+
+        boolean requiresAction = "requires_action".equals(intent.getStatus());
+        boolean succeeded = "succeeded".equals(intent.getStatus());
+
+        for (Payment payment : pending) {
+            PaymentTransaction transaction = new PaymentTransaction();
+            transaction.setRequestedAt(LocalDateTime.now());
+            transaction.setGatewayReference(intent.getId());
+            if (requiresAction) {
+                transaction.setStatus(PaymentTransaction.TxnStatus.UNSUCCESSFUL);
+            } else {
+                transaction.setTnxTime(LocalDateTime.now());
+                transaction.setStatus(succeeded
+                        ? PaymentTransaction.TxnStatus.SUCCESSFUL
+                        : PaymentTransaction.TxnStatus.UNSUCCESSFUL);
+            }
+            transaction = transactionRepository.save(transaction);
+
+            payment.setTransaction(transaction);
+            if (succeeded) {
+                payment.setStatus(Payment.PaymentStatus.PAYED);
+            }
+            paymentRepository.save(payment);
+        }
+
+        if (requiresAction) {
+            return PayAllResponseDTO.builder()
+                    .paidCount(0)
+                    .totalAmount(total)
+                    .requiresAction(true)
+                    .clientSecret(intent.getClientSecret())
+                    .build();
+        }
+
+        if (!succeeded) {
+            throw new IllegalArgumentException("Payment failed: card was declined");
+        }
+
+        return PayAllResponseDTO.builder().paidCount(pending.size()).totalAmount(total).build();
+    }
+
+    /**
+     * Finalizes a 3D-Secure-completed "pay full balance" charge. The covered
+     * invoices are looked up by the PaymentIntent's own id rather than taken
+     * from the request, so a charge raised between process and confirm can't
+     * be marked paid without being paid for.
+     */
+    @Transactional
+    public PayAllResponseDTO confirmPayAll(String requesterEmail, PayAllConfirmRequestDTO request) {
+        ensureOwnership(requesterEmail, request.getParentId());
+
+        PaymentIntent intent;
+        try {
+            intent = PaymentIntent.retrieve(request.getPaymentIntentId());
+        } catch (StripeException e) {
+            throw new IllegalArgumentException("Unable to verify payment: " + e.getMessage());
+        }
+
+        if (!"succeeded".equals(intent.getStatus())) {
+            throw new IllegalArgumentException("Payment was not completed (status: " + intent.getStatus() + ")");
+        }
+
+        List<Payment> covered = paymentRepository
+                .findByParent_ParentIdAndStatusAndTransaction_GatewayReference(
+                        request.getParentId(), Payment.PaymentStatus.NOT_PAYED, intent.getId());
+
+        long total = 0;
+        for (Payment payment : covered) {
+            PaymentTransaction transaction = payment.getTransaction();
+            transaction.setTnxTime(LocalDateTime.now());
+            transaction.setStatus(PaymentTransaction.TxnStatus.SUCCESSFUL);
+            transactionRepository.save(transaction);
+
+            payment.setStatus(Payment.PaymentStatus.PAYED);
+            paymentRepository.save(payment);
+            total += payment.getAmount();
+        }
+
+        log.info("Confirmed full-balance payment {} covering {} invoice(s)", intent.getId(), covered.size());
+        return PayAllResponseDTO.builder().paidCount(covered.size()).totalAmount(total).build();
+    }
+
+    /**
      * Parent-initiated one-off charge (registration fee, facility fee, or a
-     * free-text "other" charge) - created as NOT_PAYED, paid immediately
-     * afterward through the normal processPayment() flow.
+     * free-text "other" charge).
+     *
+     * This raises an invoice only - it takes no money and touches Stripe not
+     * at all. The charge lands as NOT_PAYED, where it adds to the parent's
+     * outstanding balance and appears as Pending in their invoice list. It is
+     * settled later, as a separate deliberate act, when the parent uses
+     * "Pay Now" and the frontend calls processPayment() with a saved card.
+     * Nothing here should ever be changed to charge at creation time.
      */
     @Transactional
     public PaymentResponseDTO createAdditionalCharge(String requesterEmail, AdditionalChargeRequestDTO request) {
@@ -317,6 +458,7 @@ public class PaymentService {
         dto.setStatus(payment.getStatus());
         dto.setParentId(payment.getParent().getParentId());
         dto.setParentName(payment.getParent().getFullName());
+        dto.setCreatedAt(payment.getCreatedAt());
 
         if (payment.getTransaction() != null) {
             dto.setTxnId(payment.getTransaction().getTxnId());
