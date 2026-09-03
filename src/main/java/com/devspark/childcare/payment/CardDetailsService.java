@@ -6,7 +6,10 @@ import com.devspark.childcare.payment.dto.request.CardDetailsRequestDTO;
 import com.devspark.childcare.payment.dto.response.CardDetailsResponseDTO;
 import com.devspark.childcare.shared.exception.ResourceNotFoundException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Customer;
 import com.stripe.model.PaymentMethod;
+import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.PaymentMethodAttachParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,32 @@ public class CardDetailsService {
         PaymentMethod.Card card = paymentMethod.getCard();
         if (card == null) {
             throw new IllegalArgumentException("Payment method is not a card");
+        }
+
+        // Stripe only lets an unattached PaymentMethod back a single
+        // PaymentIntent, so a card saved without a Customer works once and
+        // then fails forever. Attach it to this parent's Customer instead.
+        try {
+            String customerId = parent.getStripeCustomerId();
+            if (customerId == null || customerId.isBlank()) {
+                customerId = Customer.create(CustomerCreateParams.builder()
+                        .setName(parent.getFullName())
+                        .putMetadata("parent_id", parent.getParentId().toString())
+                        .build()).getId();
+                parent.setStripeCustomerId(customerId);
+                parentRepository.save(parent);
+            }
+
+            if (paymentMethod.getCustomer() == null) {
+                paymentMethod = paymentMethod.attach(PaymentMethodAttachParams.builder()
+                        .setCustomer(customerId)
+                        .build());
+            } else if (!paymentMethod.getCustomer().equals(customerId)) {
+                throw new IllegalArgumentException(
+                        "This payment method is already attached to a different customer");
+            }
+        } catch (StripeException e) {
+            throw new IllegalArgumentException("Could not attach card to customer: " + e.getMessage());
         }
 
         CardDetails details = new CardDetails();
